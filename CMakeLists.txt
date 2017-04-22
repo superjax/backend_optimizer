@@ -8,7 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=gnu++11 ${OpenMP_CXX_FLAGS} -O3")
 
-#find_package(GTSAM)
+find_package(GTSAM)
 find_package(pybind11)
 
 catkin_package(
@@ -23,7 +23,7 @@ catkin_package(
 include_directories(
         include
         ${catkin_INCLUDE_DIRS}
-#        ${GTSAM_INCLUDE_DIR}
+        ${GTSAM_INCLUDE_DIR}
 )
 ## Declare a pybind module this is a fancy wrapper for add_library
 pybind11_add_module(backend_optimizer
@@ -32,7 +32,7 @@ pybind11_add_module(backend_optimizer
 )
 
 ## Specify libraries to link a library or executable target against
-#target_link_libraries(backend_optimizer ${catkin_LIBRARIES} gtsam)
+target_link_libraries(backend_optimizer gtsam)
 
 
 # Don't prepend wrapper library name with lib and add to Python libs.
