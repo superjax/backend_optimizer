@@ -7,12 +7,12 @@
 // GTSAM includes
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/inference/Key.h>
-#include <gtsam/slam/PriorFactor.h>
-#include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
-#include <gtsam/nonlinear/Marginals.h>
-#include <gtsam/nonlinear/Values.h>
+//#include <gtsam/slam/PriorFactor.h>
+//#include <gtsam/slam/BetweenFactor.h>
+//#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+//#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+//#include <gtsam/nonlinear/Marginals.h>
+//#include <gtsam/nonlinear/Values.h>
 
 // Other includes
 #include <vector>
@@ -40,9 +40,9 @@ private:
   int num_nodes_ = 0;
   int num_edges_ = 0;
   int fixed_node_index_ = 0;
-  NonlinearFactorGraph graph_;
-  Values initialEstimate_;
-  GaussNewtonParams parameters_;
+  // NonlinearFactorGraph graph_;
+  // Values initialEstimate_;
+  // GaussNewtonParams parameters_;
 //  GaussNewtonOptimizer optimizer_;
 
   std::map<std::string, int> node_id_to_index_map;

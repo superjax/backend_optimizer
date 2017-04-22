@@ -27,9 +27,9 @@ std::vector< T > to_std_vector( const py::object& iterable )
 
 backendOptimizer::backendOptimizer()
 {
-  parameters_.relativeErrorTol = 1e-5;
-  parameters_.maxIterations = 1000;
-  parameters_.linearSolverType = NonlinearOptimizerParams::MULTIFRONTAL_CHOLESKY;
+  // parameters_.relativeErrorTol = 1e-5;
+  // parameters_.maxIterations = 1000;
+  // parameters_.linearSolverType = NonlinearOptimizerParams::MULTIFRONTAL_CHOLESKY;
 
   num_nodes_ = 0;
   edge_constraints_.clear();
@@ -62,7 +62,9 @@ int backendOptimizer::new_graph(py::list nodes, py::list edges, std::string fixe
     node_id_to_index_map[id] = num_nodes_;
     index_to_node_id_map[num_nodes_] = id;
 
-    initialEstimate_.insert(num_nodes_, Pose2(x, y,  z));
+    std::vector<double> pose = {x, y, z};
+    optimized_poses_.push_back(pose);
+    // initialEstimate_.insert(num_nodes_, Pose2(x, y,  z));
     num_nodes_++;
   }
 
@@ -86,39 +88,39 @@ int backendOptimizer::new_graph(py::list nodes, py::list edges, std::string fixe
     edge_constraints_.push_back(edge_constraint);
 
     // Create the Noise model for this edge
-    noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Sigmas(Vector3(P11, P22, P33));
+    // noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Sigmas(Vector3(P11, P22, P33));
 
-    graph_.emplace_shared<BetweenFactor<Pose2> >(node_id_to_index_map[from], node_id_to_index_map[to],
-                                                 Pose2(x, y, z), model);
+    // graph_.emplace_shared<BetweenFactor<Pose2> >(node_id_to_index_map[from], node_id_to_index_map[to],
+                                                 // Pose2(x, y, z), model);
     num_edges_++;
   }
 
   // fix the fixed node
   int fixed_node_index_ = node_id_to_index_map[fixed_node];
-  noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Sigmas(Vector3(0.001, 0.001, 0.001));
-  graph_.emplace_shared<PriorFactor<Pose2> >(fixed_node_index_, Pose2(0, 0, 0), priorNoise);
+  // noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Sigmas(Vector3(0.001, 0.001, 0.001));
+  // graph_.emplace_shared<PriorFactor<Pose2> >(fixed_node_index_, Pose2(0, 0, 0), priorNoise);
 }
 
 void backendOptimizer::add(py::list nodes, py::list edges){}
 
 void backendOptimizer::optimize()
 {
-  GaussNewtonOptimizer optimizer(graph_, initialEstimate_, parameters_);
+  // GaussNewtonOptimizer optimizer(graph_, initialEstimate_, parameters_);
   clock_t start_time = std::clock();
 
-  Values optimized_values = optimizer.optimize();
-  clock_t time = std::clock();
+  // Values optimized_values = optimizer.optimize();
+  clock_t time = std::clock() - start_time;
 
   std::cout << "took " << time << " ticks or " << ((float)time)/CLOCKS_PER_SEC << " seconds " << std::endl;
   std::cout << "optimized " << num_nodes_ << " nodes and " << num_edges_ << " edges " << std::endl;
 
   // Pull optimized values into the proper arrays
-  optimized_poses_.clear();
+  // optimized_poses_.clear();
   for (int i = 0; i < num_nodes_; i++)
   {
-    Pose2 output = optimized_values.at<Pose2>(i);
-    std::vector<double> pose = {output.x(), output.y(), output.theta()};
-    optimized_poses_.push_back(pose);
+    // Pose2 output = optimized_values.at<Pose2>(i);
+    // std::vector<double> pose = {output.x(), output.y(), output.theta()};
+    // optimized_poses_.push_back(pose);
   }
 }
 

@@ -9,7 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
 SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=gnu++11 ${OpenMP_CXX_FLAGS} -O3")
 
 # Add GTSAM
-find_package(GTSAM)
+ find_package(GTSAM)
 
 # Get support for boost python
 find_package(Boost REQUIRED COMPONENTS python)
@@ -40,6 +40,7 @@ add_library(backend_optimizer
 )
 
 add_library(_backend_optimizer_wrapper_cpp
+    MODULE
     src/backend_optimizer_wrapper.cpp
     include/backend_optimizer.h
 )
@@ -52,4 +53,4 @@ target_link_libraries(_backend_optimizer_wrapper_cpp backend_optimizer ${catkin_
 set_target_properties(_backend_optimizer_wrapper_cpp PROPERTIES
         PREFIX ""
         LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}
-        )
+)
