@@ -31,7 +31,7 @@ class BackendOptimizer
 public:
 
   BackendOptimizer();
-  int add(int i, int j);
+  int sum(py::list list_to_sum);
 //  int new_graph(py::list nodes, py::list edges, std::__cxx11::string fixed_node);
 //  void add(py::list nodes, py::list edges);
 //  void optimize();

@@ -8,10 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=gnu++11 ${OpenMP_CXX_FLAGS} -O3")
 
-# Add GTSAM
- # find_package(GTSAM)
-
-# Get support for boost python
+#find_package(GTSAM)
 find_package(pybind11)
 
 catkin_package(
@@ -23,22 +20,20 @@ catkin_package(
 ###########
 ## Build ##
 ###########
-include_directories(include)
 include_directories(
+        include
         ${catkin_INCLUDE_DIRS}
+#        ${GTSAM_INCLUDE_DIR}
 )
-## Declare a pybind module
-pybind11_add_module(backend_optimizer src/backend_optimizer.cpp)
-
-# add_library(_backend_optimizer_wrapper_cpp
-#     MODULE
-#     src/backend_optimizer_wrapper.cpp
-#     include/backend_optimizer.h
-# )
+## Declare a pybind module this is a fancy wrapper for add_library
+pybind11_add_module(backend_optimizer
+    src/backend_optimizer.cpp
+    include/backend_optimizer.h
+)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(backend_optimizer ${catkin_LIBRARIES} gtsam)
-# target_link_libraries(_backend_optimizer_wrapper_cpp backend_optimizer ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+#target_link_libraries(backend_optimizer ${catkin_LIBRARIES} gtsam)
+
 
 # Don't prepend wrapper library name with lib and add to Python libs.
 set_target_properties(backend_optimizer PROPERTIES
