@@ -19,15 +19,16 @@ BackendOptimizer::BackendOptimizer()
   index_to_node_id_map.clear();
 }
 
-int BackendOptimizer::sum(py::list list_to_sum)
+py::list BackendOptimizer::cumsum(py::list list_to_sum)
 {
   int sum = 0;
-  std::vector<int> vec_to_sum = list_to_sum.cast<std::vector<int>>();
-  for (int i = 0; i < vec_to_sum.size(); i++)
+  py::list outputs;
+  for (int i = 0; i < list_to_sum.size(); i++)
   {
-    sum += vec_to_sum[i];
+    sum += list_to_sum[i].cast<int>();
+    outputs.append(sum);
   }
-  return sum;
+  return outputs;
 }
 
 
@@ -37,7 +38,7 @@ PYBIND11_PLUGIN(backend_optimizer) {
 
   py::class_<BackendOptimizer>(m, "BackendOptimizer")
       .def("__init__", [](BackendOptimizer &instance) {new (&instance) BackendOptimizer();})
-      .def("sum", &BackendOptimizer::sum);
+      .def("cumsum", &BackendOptimizer::cumsum);
 
   return m.ptr();
 }
