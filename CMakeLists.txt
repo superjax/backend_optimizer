@@ -28,7 +28,7 @@ include_directories(
         ${catkin_INCLUDE_DIRS}
 )
 ## Declare a pybind module
-pybind11_add_module(example src/backend_optimizer.cpp)
+pybind11_add_module(backend_optimizer src/backend_optimizer.cpp)
 
 # add_library(_backend_optimizer_wrapper_cpp
 #     MODULE
@@ -41,7 +41,7 @@ pybind11_add_module(example src/backend_optimizer.cpp)
 # target_link_libraries(_backend_optimizer_wrapper_cpp backend_optimizer ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 # Don't prepend wrapper library name with lib and add to Python libs.
-set_target_properties(example PROPERTIES
+set_target_properties(backend_optimizer PROPERTIES
         PREFIX ""
         LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}
 )

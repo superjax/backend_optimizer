@@ -1,12 +1,12 @@
 #ifndef BACKEND_OPTIMIZER_H
 #define BACKEND_OPTIMIZER_H
 
-#include <boost/python.hpp>
+#include <pybind11/pybind11.h>
 #include <ros/ros.h>
 
 // GTSAM includes
-#include <gtsam/geometry/Pose2.h>
-#include <gtsam/inference/Key.h>
+//#include <gtsam/geometry/Pose2.h>
+//#include <gtsam/inference/Key.h>
 //#include <gtsam/slam/PriorFactor.h>
 //#include <gtsam/slam/BetweenFactor.h>
 //#include <gtsam/nonlinear/NonlinearFactorGraph.h>
@@ -19,22 +19,23 @@
 #include <time.h>
 #include <map>
 
-namespace py = boost::python;
-using namespace gtsam;
+namespace py = pybind11;
+//using namespace gtsam;
 
 namespace backend_optimizer
 {
 
-class backendOptimizer
+class BackendOptimizer
 {
 
 public:
 
-  backendOptimizer();
-  int new_graph(py::list nodes, py::list edges, std::__cxx11::string fixed_node);
-  void add(py::list nodes, py::list edges);
-  void optimize();
-  py::dict get_optimized();
+  BackendOptimizer();
+  int add(int i, int j);
+//  int new_graph(py::list nodes, py::list edges, std::__cxx11::string fixed_node);
+//  void add(py::list nodes, py::list edges);
+//  void optimize();
+//  py::dict get_optimized();
 
 private:
   int num_nodes_ = 0;

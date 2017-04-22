@@ -1,15 +1,36 @@
 #include <pybind11/pybind11.h>
-
-int add(int i, int j) {
-    return i + j;
-}
+#include <backend_optimizer.h>
 
 namespace py = pybind11;
+using namespace backend_optimizer;
 
-PYBIND11_PLUGIN(example) {
-    py::module m("example", "pybind11 example plugin");
+BackendOptimizer::BackendOptimizer()
+{
+  // parameters_.relativeErrorTol = 1e-5;
+  // parameters_.maxIterations = 1000;
+  // parameters_.linearSolverType = NonlinearOptimizerParams::MULTIFRONTAL_CHOLESKY;
 
-    m.def("add", &add, "A function which adds two numbers");
+  num_nodes_ = 0;
+  edge_constraints_.clear();
+  optimized_poses_.clear();
+  edge_list_.clear();
+  node_id_to_index_map.clear();
+  index_to_node_id_map.clear();
+}
 
-    return m.ptr();
+int BackendOptimizer::add(int i, int j)
+{
+  return i+j;
+}
+
+
+
+PYBIND11_PLUGIN(backend_optimizer) {
+  py::module m("backend_optimizer", "pybind11 backend_optimizer plugin");
+
+  py::class_<BackendOptimizer>(m, "BackendOptimizer")
+      .def("__init__", [](BackendOptimizer &instance) {new (&instance) BackendOptimizer();})
+      .def("add", &BackendOptimizer::add);
+
+  return m.ptr();
 }
