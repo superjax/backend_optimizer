@@ -10,7 +10,7 @@
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
-#include <gtsam/nonlinear/GaussNewtonOptimizer.h>
+#include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/Values.h>
 
@@ -43,8 +43,9 @@ private:
     int fixed_node_index_ = 0;
     NonlinearFactorGraph graph_;
     Values initialEstimate_;
-    GaussNewtonParams parameters_;
-//    GaussNewtonOptimizer optimizer_;
+    ISAM2Params parameters_;
+    ISAM2Result result_;
+    ISAM2 optimizer_;
 
     std::map<std::string, int> node_id_to_index_map;
     std::map<int, std::string> index_to_node_id_map;

@@ -197,10 +197,10 @@ class Backend():
         self.find_loop_closures()
 
         # plt.ion()
-        self.plot_graph(self.G, "full graph (TRUTH)", figure_handle=0)
-        self.plot_agent(self.G, agent=0, figure_handle=0)
-        self.plot_agent(self.G, agent=205, figure_handle=0, color='y')
-        self.plot_agent(self.G, agent=750, figure_handle=0, color='g')
+        self.plot_graph(self.G, "full graph (TRUTH)", figure_handle=1)
+        self.plot_agent(self.G, agent=0, figure_handle=1, color ='c')
+        self.plot_agent(self.G, agent=10, figure_handle=1, color='y')
+        self.plot_agent(self.G, agent=20, figure_handle=1, color='g')
 
         # Get a minimum spanning tree of nodes connected to our origin node
         min_spanning_tree = nx.Graph()
@@ -211,17 +211,17 @@ class Backend():
                 component.node['0_000']['pose'] = [0, 0, 0]
                 self.seed_graph(component, '0_000')
                 self.plot_graph(component, "connected component unoptimized", figure_handle=3, edge_color='m')
-                self.plot_agent(component, agent=0, figure_handle=3)
-                self.plot_agent(component, agent=205, figure_handle=0, color='y')
-                self.plot_agent(component, agent=750, figure_handle=0, color='g')
+                self.plot_agent(component, agent=0, figure_handle=3, color='c')
+                self.plot_agent(component, agent=10, figure_handle=3, color='y')
+                self.plot_agent(component, agent=20, figure_handle=3, color='g')
 
                 # Let GTSAM crunch it
                 print("optimizing")
                 optimized_component = self.call_gtsam(component)
                 self.plot_graph(optimized_component, "optimized", figure_handle=4, edge_color='b')
                 self.plot_agent(optimized_component, agent=0, figure_handle=4)
-                self.plot_agent(optimized_component, agent=205, figure_handle=4, color='y')
-                self.plot_agent(optimized_component, agent=750, figure_handle=4, color='g')
+                self.plot_agent(optimized_component, agent=10, figure_handle=4, color='y')
+                self.plot_agent(optimized_component, agent=20, figure_handle=4, color='g')
 
         plt.show()
 
@@ -334,6 +334,6 @@ class Backend():
         else:
             plt.figure()
 
-        plt.plot(x, y, color=color, lw=4)
+        plt.plot(y, x, color=color, lw=4)
 
 
