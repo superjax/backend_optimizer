@@ -32,15 +32,19 @@ public:
 
     BackendOptimizer();
     py::list cumsum(py::list list_to_sum);
-    int new_graph(py::list nodes, py::list edges, std::__cxx11::string fixed_node);
+    int new_graph(std::string fixed_node);
     void add(py::list nodes, py::list edges);
     void optimize();
     py::dict get_optimized();
 
 private:
-    int num_nodes_ = 0;
-    int num_edges_ = 0;
-    int fixed_node_index_ = 0;
+    bool node_exists(std::string node_id);
+    bool edge_exists(std::vector<std::string> edge);
+
+    int num_nodes_;
+    int num_edges_;
+    std::string fixed_node_id_;
+    bool graph_fixed_;
     NonlinearFactorGraph graph_;
     Values initialEstimate_;
     ISAM2Params parameters_;
@@ -52,8 +56,6 @@ private:
     std::vector<std::vector<std::string>> edge_list_;
     std::vector<std::vector<double>> optimized_poses_;
     std::vector<std::vector<double>> edge_constraints_;
-
-
 };
 
 class Edge

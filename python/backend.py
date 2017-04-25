@@ -169,11 +169,9 @@ class Backend():
 
 
     def get_children_pose(self, graph, node):
-        more_children = False
         children = []
         for child in graph.neighbors(node):
             if 'pose' not in graph.node[child]:
-                more_children = True
                 children.append(child)
                 edge = graph.edge[node][child]
 
@@ -188,11 +186,11 @@ class Backend():
                     y = graph.node[node]['pose'][1] - edge['transform'][0] * sin(psi) - edge['transform'][1] * cos(psi)
 
                 graph.node[child]['pose'] = [x, y, psi]
-        return children, more_children
+        return children
 
 
 
-    def optimize(self):
+    def optimize(self, root_node):
         # Find loop closures
         self.find_loop_closures()
 
@@ -207,9 +205,55 @@ class Backend():
         for component in sorted(nx.connected_component_subgraphs(self.G, copy=True), key=len, reverse=True):
             if '0_000' in component.node:
                 self.plot_graph(component, "connected component truth", figure_handle=2, edge_color='r')
+
+                # Initialize the component
+                depth = 0
+                children = [root_node]
+                nodes_to_add_to_gtsam = [root_node]
+                component.node[root_node]['pose'] = [0, 0, 0]
+                self.init_gtsam(root_node)
+
+                figure_number = 100
+
+                while children:
+                    depth += 1
+                    next_iteration_children = []
+                    for child in children:
+                        this_child_children = self.get_children_pose(component, child)
+                        if this_child_children:
+                            next_iteration_children.extend(this_child_children)
+                    children = next_iteration_children
+                    nodes_to_add_to_gtsam.extend(children)
+
+                    if depth >= 50:
+                        depth = 0
+                        subcomponent = component.subgraph(nodes_to_add_to_gtsam)
+                        # Add these nodes to gtsam and optimize
+                        self.add_to_gtsam(subcomponent)
+                        self.run_gtsam()
+                        self.plot_graph(subcomponent, "connected component unoptimized", figure_handle=figure_number, edge_color='m')
+                        self.plot_agent(subcomponent, agent=0, figure_handle=figure_number, color='c')
+                        self.plot_agent(subcomponent, agent=10, figure_handle=figure_number, color='y')
+                        self.plot_agent(subcomponent, agent=20, figure_handle=figure_number, color='g')
+                        self.update_poses_with_gtsam_results(component)
+                        figure_number += 1
+                        self.plot_graph(component, "connected component optimized", figure_handle=figure_number, edge_color='m')
+                        self.plot_agent(component, agent=0, figure_handle=figure_number, color='c')
+                        self.plot_agent(component, agent=10, figure_handle=figure_number, color='y')
+                        self.plot_agent(component, agent=20, figure_handle=figure_number, color='g')
+                        figure_number += 1
+
+                self.run_gtsam()
+                self.run_gtsam()
+                self.run_gtsam()
+
+
+
+
+
                 # Find Initial Guess for node positions
-                component.node['0_000']['pose'] = [0, 0, 0]
-                self.seed_graph(component, '0_000')
+
+                # self.seed_graph(component, '0_000')
                 self.plot_graph(component, "connected component unoptimized", figure_handle=3, edge_color='m')
                 self.plot_agent(component, agent=0, figure_handle=3, color='c')
                 self.plot_agent(component, agent=10, figure_handle=3, color='y')
@@ -217,24 +261,23 @@ class Backend():
 
                 # Let GTSAM crunch it
                 print("optimizing")
-                optimized_component = self.call_gtsam(component)
-                self.plot_graph(optimized_component, "optimized", figure_handle=4, edge_color='b')
-                self.plot_agent(optimized_component, agent=0, figure_handle=4)
-                self.plot_agent(optimized_component, agent=10, figure_handle=4, color='y')
-                self.plot_agent(optimized_component, agent=20, figure_handle=4, color='g')
+                # optimized_component = self.call_gtsam(component)
+                # self.plot_graph(optimized_component, "optimized", figure_handle=4, edge_color='b')
+                # self.plot_agent(optimized_component, agent=0, figure_handle=4)
+                # self.plot_agent(optimized_component, agent=10, figure_handle=4, color='y')
+                # self.plot_agent(optimized_component, agent=20, figure_handle=4, color='g')
 
         plt.show()
 
+    def init_gtsam(self, root_node):
+        self.optimizer.new_graph(root_node)
 
-    def call_gtsam(self, graph):
+    def add_to_gtsam(self, graph):
 
-        # Build nodes list
+        # Build nodes list for gtsam
         nodes = []
         for i in sorted(graph.nodes_iter()):
             nodes.append([i, graph.node[i]['pose'][0], graph.node[i]['pose'][1], graph.node[i]['pose'][2]])
-
-        # Fix agent 0, node 0 as global origin (Could be moved)
-        fixed_node = "0_000"
 
         # Build edges list
         edges = []
@@ -250,29 +293,18 @@ class Backend():
                           self.G.edge[i][j]['covariance'][1][1],
                           self.G.edge[i][j]['covariance'][2][2]])
 
-        # run GTSAM
-        self.optimizer.new_graph(nodes, edges, fixed_node)
+        # Add edges to GTSAM
+        self.optimizer.add(nodes, edges)
+
+    def run_gtsam(self):
         self.optimizer.optimize()
+
+    def update_poses_with_gtsam_results(self, graph):
         optimized_values = self.optimizer.get_optimized()
 
-        # Create a new graph of optimized values
-        optimized_graph = nx.Graph()
         for node in optimized_values["nodes"]:
             node_id = node[0]
-            optimized_graph.add_node(node_id, pose=[node[1], node[2], node[3]], vehicle_id=node_id.split("_")[0],
-                                     KF = self.G.node[node_id]['KF'])
-
-        for edge in optimized_values["edges"]:
-            from_id = edge[0]
-            to_id = edge[1]
-            transform = self.find_transform(np.array(graph.node[from_id]['pose']),
-                                            np.array(graph.node[to_id]['pose']))
-            # Total guess about covariance for optimized edges
-            P = [[0.00001, 0, 0],
-                 [0, 0.00001, 0],
-                 [0, 0, 0.00001]]
-            optimized_graph.add_edge(from_id, to_id, transform=transform, covariance=P)
-        return optimized_graph
+            graph.node[node_id]['pose']=[node[1], node[2], node[3]]
 
 
     def plot_graph(self, graph, title='default', name='default', arrows=False, figure_handle=0, edge_color='m', lc_color='y'):

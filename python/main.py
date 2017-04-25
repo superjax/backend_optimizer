@@ -10,13 +10,13 @@ if __name__ == "__main__":
 
     robots = []
     controllers = []
-    num_robots = 500
+    num_robots = 200
     KF_frequency_s = 1.0
 
     map = Backend("Noisy Map")
     true_map = Backend("True Map")
 
-    start_pose_range = [15, 15, 2]
+    start_pose_range = [10, 10, 2]
 
     start_poses = [[randint(-start_pose_range[0], start_pose_range[0])*10,
                    randint(-start_pose_range[1], start_pose_range[1])*10,
@@ -46,5 +46,5 @@ if __name__ == "__main__":
             map.add_edge(e)
             i += 1
 
-    map.optimize()
+    map.optimize('0_000')
 
