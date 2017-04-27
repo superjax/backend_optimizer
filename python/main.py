@@ -47,7 +47,7 @@ if __name__ == "__main__":
                          str(r) + "_" + str(robots[r].keyframe_id()).zfill(3), G,
                          edge, KF)
                 map.add_odometry(e)
-    map.process_batch()
+    map.finish_up()
 
     map.plot()
     plt.show()

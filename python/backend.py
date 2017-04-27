@@ -52,6 +52,7 @@ class Backend():
         self.buffer_size = 0
         self.tree = []
         self.new_keyframes = []
+        self.loop_closure_throttle_counter = 0
 
         self.keyframe_index_to_id_map = dict()
         self.keyframe_id_to_index_map = dict()
@@ -114,12 +115,18 @@ class Backend():
             self.node_buffer_for_optimizer.append(out_node)
             self.edge_buffer_for_optimizer.append(out_edge)
 
+        self.loop_closure_throttle_counter += 1
+        if self.loop_closure_throttle_counter >= 500:
+            self.loop_closure_throttle_counter = 0
+            self.find_loop_closures()
+
         # Throttle update
         if len(self.node_buffer_for_optimizer) >= 10:
-            self.process_batch()
+            self.update_gtsam()
+            self.optimizer.optimize()
 
 
-    def process_batch(self):
+    def finish_up(self):
         # Find loop closures on this latest batch
         self.find_loop_closures()
         # update optimizer
