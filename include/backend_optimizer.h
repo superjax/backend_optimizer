@@ -32,25 +32,27 @@ public:
 
     BackendOptimizer();
     py::list cumsum(py::list list_to_sum);
-    int new_graph(py::list nodes, py::list edges, std::__cxx11::string fixed_node);
-    void add(py::list nodes, py::list edges);
+    int new_graph(std::string fixed_node);
+    void add_edge(py::list node, py::list edge);
+    void add_loop_closure(py::list edge);
     void optimize();
     py::dict get_optimized();
+    py::dict get_global_pose_and_covariance(std::string node);
 
 private:
-    int num_nodes_ = 0;
-    int num_edges_ = 0;
-    int fixed_node_index_ = 0;
-    NonlinearFactorGraph graph_;
+    std::string fixed_node_;
     Values initialEstimate_;
     ISAM2Params parameters_;
     ISAM2Result result_;
     ISAM2 optimizer_;
 
-    std::map<std::string, int> node_id_to_index_map;
-    std::map<int, std::string> index_to_node_id_map;
+    uint64_t num_nodes_;
+    uint64_t num_edges_;
+
+    std::map<std::string, uint64_t> node_name_to_id_map_;
+    std::map<uint64_t, std::string> node_id_to_name_map_;
+
     std::vector<std::vector<std::string>> edge_list_;
-    std::vector<std::vector<double>> optimized_poses_;
     std::vector<std::vector<double>> edge_constraints_;
 
 

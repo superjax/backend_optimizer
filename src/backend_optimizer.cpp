@@ -11,131 +11,103 @@ BackendOptimizer::BackendOptimizer() :
   parameters_.relinearizeThreshold = 0.01;
   parameters_.relinearizeSkip = 1;
 
-  num_nodes_ = 0;
   edge_constraints_.clear();
-  optimized_poses_.clear();
   edge_list_.clear();
-  node_id_to_index_map.clear();
-  index_to_node_id_map.clear();
+  fixed_node_ = "";
+  node_name_to_id_map_.clear();
+  node_id_to_name_map_.clear();
 
+  num_nodes_ = 0;
+  num_edges_ = 0;
 }
 
-int BackendOptimizer::new_graph(py::list nodes, py::list edges, std::string fixed_node)
+// create a new graph, fixed at the fixed_node
+int BackendOptimizer::new_graph(std::string fixed_node)
 {
-  num_nodes_ = 0;
   edge_constraints_.clear();
-  optimized_poses_.clear();
   edge_list_.clear();
-  node_id_to_index_map.clear();
-  index_to_node_id_map.clear();
-
   optimizer_.clear();
-
-  // extract nodes
-  std::vector<py::list> stl_nodes = nodes.cast<std::vector<py::list>>();
-  for (int i = 0; i < stl_nodes.size(); i++)
-  {
-    std::string id = stl_nodes[i][0].cast<std::string>();
-    double x = stl_nodes[i][1].cast<double>();
-    double y = stl_nodes[i][2].cast<double>();
-    double z = stl_nodes[i][3].cast<double>();
-
-    // create connection between integer index and string node name
-    node_id_to_index_map[id] = num_nodes_;
-    index_to_node_id_map[num_nodes_] = id;
-
-    std::vector<double> pose = {x, y, z};
-    optimized_poses_.push_back(pose);
-    initialEstimate_.insert(num_nodes_, Pose2(x, y,  z));
-    num_nodes_++;
-  }
-
-  // extract edges
-  std::vector<py::list> stl_edges = edges.cast<std::vector<py::list>>();
-  for (int i = 0; i < stl_edges.size(); i++)
-  {
-    std::string from = stl_edges[i][0].cast<std::string>();
-    std::string to = stl_edges[i][1].cast<std::string>();
-    double x = stl_edges[i][2].cast<double>();
-    double y = stl_edges[i][3].cast<double>();
-    double z = stl_edges[i][4].cast<double>();
-    double P11 = stl_edges[i][5].cast<double>();
-    double P22 = stl_edges[i][6].cast<double>();
-    double P33 = stl_edges[i][7].cast<double>();
-
-    // save off edge constraints so we can quickly load it if we want to add edges later
-    std::vector<std::string> edge = {from, to};
-    edge_list_.push_back(edge);
-    std::vector<double> edge_constraint = {x, y, z, P11, P22, P33};
-    edge_constraints_.push_back(edge_constraint);
-
-    // Create the Noise model for this edge
-    noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Sigmas(Vector3(P11, P22, P33));
-
-    graph_.emplace_shared<BetweenFactor<Pose2> >(node_id_to_index_map[from], node_id_to_index_map[to],
-                                                 Pose2(x, y, z), model);
-    num_edges_++;
-  }
-
-  // fix the fixed node
-  int fixed_node_index_ = node_id_to_index_map[fixed_node];
-  noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Sigmas(Vector3(0.001, 0.001, 0.001));
-  graph_.emplace_shared<PriorFactor<Pose2> >(fixed_node_index_, Pose2(0, 0, 0), priorNoise);
-
-  // put the graph in the optimizer
-  result_ = optimizer_.update(graph_, initialEstimate_);
+  fixed_node_ = fixed_node;
+  node_name_to_id_map_.clear();
+  node_id_to_name_map_.clear();
+  num_nodes_ = 0;
+  num_edges_ = 0;
 }
 
-void BackendOptimizer::add(py::list nodes, py::list edges)
+// add an odometry edge
+void BackendOptimizer::add_edge(py::list node, py::list edge)
 {
   NonlinearFactorGraph new_graph;
   Values new_initial_estimates;
 
-  std::vector<py::list> stl_nodes = nodes.cast<std::vector<py::list>>();
-  for (int i = 0; i < stl_nodes.size(); i++)
-  {
-    std::string id = stl_nodes[i][0].cast<std::string>();
-    double x = stl_nodes[i][1].cast<double>();
-    double y = stl_nodes[i][2].cast<double>();
-    double z = stl_nodes[i][3].cast<double>();
+  // convert the node
+  std::string id = node[0].cast<std::string>();
+  double x = node[1].cast<double>();
+  double y = node[2].cast<double>();
+  double z = node[3].cast<double>();
 
-    // create connection between integer index and string node name
-    node_id_to_index_map[id] = num_nodes_;
-    index_to_node_id_map[num_nodes_] = id;
+  // connect the name of this node to an integer index
+  node_name_to_id_map_[id] = num_nodes_;
+  node_id_to_name_map_[num_nodes_] = id;
 
-    std::vector<double> pose = {x, y, z};
-    optimized_poses_.push_back(pose);
-    new_initial_estimates.insert(num_nodes_, Pose2(x, y,  z));
-    num_nodes_++;
-  }
+  new_initial_estimates.insert(num_nodes_, Pose2(x, y,  z));
+  num_nodes_++;
 
-  // extract edges
-  std::vector<py::list> stl_edges = edges.cast<std::vector<py::list>>();
-  for (int i = 0; i < stl_edges.size(); i++)
-  {
-    std::string from = stl_edges[i][0].cast<std::string>();
-    std::string to = stl_edges[i][1].cast<std::string>();
-    double x = stl_edges[i][2].cast<double>();
-    double y = stl_edges[i][3].cast<double>();
-    double z = stl_edges[i][4].cast<double>();
-    double P11 = stl_edges[i][5].cast<double>();
-    double P22 = stl_edges[i][6].cast<double>();
-    double P33 = stl_edges[i][7].cast<double>();
+  // extract edge
+  std::string from = edge[0].cast<std::string>();
+  std::string to = edge[1].cast<std::string>();
+  x = edge[2].cast<double>();
+  y = edge[3].cast<double>();
+  z = edge[4].cast<double>();
+  double P11 = edge[5].cast<double>();
+  double P22 = edge[6].cast<double>();
+  double P33 = edge[7].cast<double>();
 
-    // save off edge constraints so we can quickly load it if we want to add edges later
-    std::vector<std::string> edge = {from, to};
-    edge_list_.push_back(edge);
-    std::vector<double> edge_constraint = {x, y, z, P11, P22, P33};
-    edge_constraints_.push_back(edge_constraint);
+  // save off edge constraints so we can quickly load it if we want to add edges later
+  std::vector<std::string> edge_vec = {from, to};
+  edge_list_.push_back(edge_vec);
+  std::vector<double> edge_constraint = {x, y, z, P11, P22, P33};
+  edge_constraints_.push_back(edge_constraint);
+  num_edges_++;
 
-    // Create the Noise model for this edge
-    noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Sigmas(Vector3(P11, P22, P33));
+  // Create the Noise model for this edge
+  noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Sigmas(Vector3(P11, P22, P33));
 
-    new_graph.emplace_shared<BetweenFactor<Pose2> >(node_id_to_index_map[from], node_id_to_index_map[to],
-                                                    Pose2(x, y, z), model);
-    num_edges_++;
-  }
+  // put this edge in the graph
+  new_graph.emplace_shared<BetweenFactor<Pose2> >(node_name_to_id_map_[from], node_name_to_id_map_[to], Pose2(x, y, z), model);
+
+  // Add the new edge to the graph
   result_ = optimizer_.update(new_graph, new_initial_estimates);
+}
+
+// add a loop closure edge
+void BackendOptimizer::add_loop_closure(py::list edge)
+{
+  NonlinearFactorGraph new_graph;
+
+  // extract edge
+  std::string from = edge[0].cast<std::string>();
+  std::string to = edge[1].cast<std::string>();
+  double x = edge[2].cast<double>();
+  double y = edge[3].cast<double>();
+  double z = edge[4].cast<double>();
+  double P11 = edge[5].cast<double>();
+  double P22 = edge[6].cast<double>();
+  double P33 = edge[7].cast<double>();
+
+  // save off edge constraints so we can quickly load it if we want to add edges later
+  std::vector<std::string> edge_vec = {from, to};
+  edge_list_.push_back(edge_vec);
+  std::vector<double> edge_constraint = {x, y, z, P11, P22, P33};
+  edge_constraints_.push_back(edge_constraint);
+  num_edges_++;
+
+  // Create the Noise model for this edge
+  noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Sigmas(Vector3(P11, P22, P33));
+  new_graph.emplace_shared<BetweenFactor<Pose2> >(node_name_to_id_map_[from], node_name_to_id_map_[to], Pose2(x, y, z), model);
+
+  // Add the new edge to the graph
+  result_ = optimizer_.update(new_graph);
 }
 
 
@@ -153,32 +125,28 @@ void BackendOptimizer::optimize()
   std::cout << "took " << time << " ticks or " << ((float)time)/CLOCKS_PER_SEC << " seconds " << std::endl;
   std::cout << "optimized " << num_nodes_ << " nodes and " << num_edges_ << " edges " << std::endl;
   result_.print("optimization results:");
-
-  Values optimized_values = optimizer_.calculateBestEstimate();
-
-  // Pull optimized values into the proper arrays
-  optimized_poses_.clear();
-  for (int i = 0; i < num_nodes_; i++)
-  {
-    Pose2 output = optimized_values.at<Pose2>(i);
-    std::vector<double> pose = {output.x(), output.y(), output.theta()};
-    optimized_poses_.push_back(pose);
-  }
 }
 
 
 py::dict BackendOptimizer::get_optimized()
 {
+
+  Values optimized_values = optimizer_.calculateBestEstimate();
+
   py::dict out_dict;
   py::list node_list;
-  for (int i = 0; i < optimized_poses_.size(); i++)
+  for (int i = 0; i < num_nodes_; i++)
   {
-    std::string node_name = index_to_node_id_map[i];
+    // Get the optimized pose out of the graph
+    Pose2 output = optimized_values.at<Pose2>(i);
+
+    // pack up into a python list
+    std::string node_name = node_id_to_name_map_[i];
     py::list node;
     node.append(node_name);
-    node.append(optimized_poses_[i][0]);
-    node.append(optimized_poses_[i][1]);
-    node.append(optimized_poses_[i][2]);
+    node.append(output.x());
+    node.append(output.y());
+    node.append(output.theta());
     node_list.append(node);
   }
   out_dict["nodes"] = node_list;
@@ -201,7 +169,7 @@ py::dict BackendOptimizer::get_optimized()
   }
   out_dict["edges"] = edge_list;
 
-  out_dict["fixed_node"] = index_to_node_id_map[fixed_node_index_];
+  out_dict["fixed_node"] = fixed_node_;
 
   return out_dict;
 }
@@ -215,7 +183,8 @@ PYBIND11_PLUGIN(backend_optimizer) {
     new (&instance) BackendOptimizer();
   })
   .def("new_graph", &BackendOptimizer::new_graph)
-      .def("add", &BackendOptimizer::add)
+      .def("add_edge", &BackendOptimizer::add_edge)
+      .def("add_loop_closure", &BackendOptimizer::add_loop_closure)
       .def("optimize", &BackendOptimizer::optimize)
       .def("get_optimized", &BackendOptimizer::get_optimized);
 
