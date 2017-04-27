@@ -6,11 +6,11 @@ from tqdm import tqdm
 
 if __name__ == "__main__":
     dt = 0.1
-    time = np.arange(0, 5000.01, dt)
+    time = np.arange(0, 100.01, dt)
 
     robots = []
     controllers = []
-    num_robots = 1
+    num_robots = 2
     KF_frequency_s = 1.0
 
     map = Backend("Noisy Map")
@@ -22,9 +22,10 @@ if __name__ == "__main__":
                    randint(-start_pose_range[1], start_pose_range[1])*10,
                    randint(-start_pose_range[2], start_pose_range[2])*pi/2] for r in range(num_robots)]
     start_poses[0] = [0, 0, 0]
+    start_poses[1] = [10, 0, pi/2]
 
     P_perfect = np.array([[0.00001, 0, 0], [0, 0.00001, 0], [0, 0, 0.00001]])
-    G = np.array([[0.01, 0, 0], [0, 0.01, 0], [0, 0, 0.1]])
+    G = np.array([[0.01, 0, 0], [0, 0.01, 0], [0, 0, 0.08]])
     print("simulating robots")
 
     controllers = [Controller(start_poses[r]) for r in range(num_robots)]
