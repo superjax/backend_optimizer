@@ -9,6 +9,7 @@ import regex
 from tqdm import tqdm
 import subprocess
 import scipy.spatial
+import sys
 
 
 class Node():
@@ -38,23 +39,31 @@ class Backend():
     def __init__(self, name="default"):
         self.name = name
         self.G = nx.Graph()
-        self.node_plot_positions = dict()
-        self.lc_edges = []
-        self.LC_threshold = 1.5
+        self.LC_threshold = 0.75
         self.overlap_threshold = 0.75
         self.node_id_map = dict()
         self.agents = []
         self.optimized = True
 
+        self.odometry_buffer = []
+        self.edge_buffer_for_optimizer = []
+        self.lc_buffer_for_optimizer = []
+        self.node_buffer_for_optimizer = []
+        self.buffer_size = 0
+        self.tree = []
+        self.new_keyframes = []
+
         self.keyframe_index_to_id_map = dict()
         self.keyframe_id_to_index_map = dict()
         self.keyframes = []
         self.current_keyframe_index = 0
+
         self.optimizer = backend_optimizer.Optimizer()
 
 
     def add_keyframe(self, KF, node_id):
         # Add the keyframe to the map
+        self.new_keyframes.append(node_id)
         self.keyframes.append(KF)
         self.keyframe_index_to_id_map[self.current_keyframe_index] = node_id
         self.keyframe_id_to_index_map[node_id] = self.current_keyframe_index
@@ -72,50 +81,130 @@ class Backend():
 
         if vehicle_id == 0:
             self.agents[0].loop_closed = True
+            self.G.node['0_000']['pose'] = [0, 0, 0]
+            self.optimizer.new_graph('0_000')
 
 
-    def add_edge(self, edge):
-        # Add this edge to the networkx graph
-        # TODO: add checks to make sure we know about this agent
+    def add_odometry(self, edge):
+        # Add the edge to the networkx Graph
         self.G.add_edge(edge.from_id, edge.to_id, covariance=edge.covariance, transform=edge.transform,
                         from_id=edge.from_id, to_id=edge.to_id)
-        # Save the keyframe to the node
         self.G.node[edge.to_id]['KF'] = edge.KF
-        #Add Keyframe to the map
+
+        #Add Keyframe to the backend
         self.add_keyframe(edge.KF, edge.to_id)
 
+        # Prepare this vehicle for Optimizer
+        vehicle_id = int(edge.from_id.split("_")[0])
+        if self.agents[vehicle_id].loop_closed:
+            # Guess on pose of this node
+            try:
+                from_pose = self.G.node[edge.from_id]['pose']
+                psi0 = from_pose[2]
+                x = from_pose[0] + edge.transform[0] * cos(psi0) - edge.transform[1] * sin(psi0)
+                y = from_pose[1] + edge.transform[0] * sin(psi0) + edge.transform[1] * cos(psi0)
+                psi = psi0 + edge.transform[2]
+                self.G.node[edge.to_id]['pose'] = [x, y, psi]
+            except KeyError:
+                sys.exit("you tried to concatenate an unconstrained edge")
+
+            out_node = [edge.to_id, x, y, psi]
+            out_edge = [edge.from_id, edge.to_id, edge.transform[0], edge.transform[1], edge.transform[2],
+                        edge.covariance[0][0], edge.covariance[1][1], edge.covariance[2][2]]
+            self.node_buffer_for_optimizer.append(out_node)
+            self.edge_buffer_for_optimizer.append(out_edge)
+
+        # Throttle update
+        if len(self.node_buffer_for_optimizer) >= 10:
+            self.process_batch()
+
+
+    def process_batch(self):
+        # Find loop closures on this latest batch
+        self.find_loop_closures()
+        # update optimizer
+        self.update_gtsam()
+
+    def update_gtsam(self):
+        self.optimizer.add_edge_batch(self.node_buffer_for_optimizer, self.edge_buffer_for_optimizer)
+        self.node_buffer_for_optimizer = []
+        self.edge_buffer_for_optimizer = []
+
+        self.optimizer.add_lc_batch(self.lc_buffer_for_optimizer)
+        self.lc_buffer_for_optimizer = []
+
+
+    def update_keyframe_tree(self):
+        self.tree = scipy.spatial.KDTree(self.keyframes)
 
 
     def find_loop_closures(self):
-        # Build a KDtree to search
-        tree = scipy.spatial.KDTree(self.keyframes)
-        lc_count = 0
+        self.tree = scipy.spatial.KDTree(self.keyframes)
+        for from_node_id in self.new_keyframes:
+            keyframe_pose = self.G.node[from_node_id]['KF']
+            indices = self.tree.query_ball_point(keyframe_pose, self.LC_threshold)
 
-        print("finding loop closures")
-        for from_id in tqdm(self.G.node):
-            KF_from = self.G.node[from_id]['KF']
-            keyframe_from_index = self.keyframe_id_to_index_map[from_id]
-            indices = tree.query_ball_point(KF_from, self.LC_threshold)
+            # TODO USE THE CLOSEST NODE, not just the first index
             for index in indices:
-                if abs(keyframe_from_index - index) > 10:
-                    to_id = self.keyframe_index_to_id_map[index]
-                    P = [[0.001, 0, 0], [0, 0.001, 0], [0, 0, 0.001]]
-                    KF_to = self.keyframes[index]
-                    self.G.add_edge(from_id, to_id, covariance=P,
-                                    transform=self.find_transform(np.array(KF_from), np.array(KF_to)),
-                                    from_id=from_id, to_id=to_id)
-                    lc_count += 1
-                    break
-        print("found %d loop closures" % lc_count)
+                to_node_id = self.keyframe_index_to_id_map[index]
+
+                if to_node_id == from_node_id:
+                    continue
+
+                # Get loop closure edge transform
+                transform = self.find_transform(keyframe_pose, self.G.node[to_node_id]['KF'])
+
+                # TODO handle inter-vehicle loop closure
+
+                # Add the edge to the networkx graph
+                covariance = [[0.001, 0, 0], [0, 0.001, 0], [0, 0, 0.001]]
+                self.G.add_edge(from_node_id, to_node_id, covariance=covariance, transform=transform,
+                                from_id=from_node_id, to_id=to_node_id)
+
+                # Add the edge to the GTSAM optimizer
+                opt_edge = [from_node_id, to_node_id, transform[0], transform[1], transform[2],
+                            covariance[0][0], covariance[1][1], covariance[2][2]]
+                self.lc_buffer_for_optimizer.append(opt_edge)
+                break
+        self.new_keyframes = []
+
+
+    def plot(self):
+        self.plot_graph(self.G, title="truth", edge_color='g', truth=True)
+        self.plot_graph(self.G, title="unoptimized", edge_color='r')
+
+        optimized_values = self.optimizer.get_optimized()
+
+        # Create a new graph of optimized values
+        optimized_values = self.optimizer.get_optimized()
+        optimized_graph = nx.Graph()
+        for node in optimized_values["nodes"]:
+            node_id = node[0]
+            optimized_graph.add_node(node_id,
+                                     pose=[node[1], node[2], node[3]],
+                                     vehicle_id=node_id.split("_")[0],
+                                     KF=self.G.node[node_id]['KF'])
+
+        for edge in optimized_values["edges"]:
+            from_id = edge[0]
+            to_id = edge[1]
+            transform = [edge[2], edge[3], edge[4]]
+            # Total guess about covariance for optimized edges
+            P = [edge[5], 0, 0, 0, edge[6], 0, 0, 0, edge[7]]
+            optimized_graph.add_edge(from_id, to_id, transform=transform, covariance=P)
+
+        self.plot_graph(optimized_graph, title="optimized", edge_color='b')
 
 
     def find_transform(self, from_pose, to_pose):
+        from_pose = np.array(from_pose)
+        to_pose = np.array(to_pose)
         # Rotate transform frame to the "from_node" frame
         xij_I = to_pose[0:2] - from_pose[0:2]
         psii = from_pose[2]
-        R_I_to_i = np.array([[cos(psii), sin(psii)],
-                             [-sin(psii), cos(psii)]])
-        dx = xij_I.dot(R_I_to_i.T)
+        R_i_to_I = np.array([[cos(psii), -sin(psii)],
+                             [sin(psii), cos(psii)]])
+        dx = xij_I.dot(R_i_to_I)
 
         if np.shape(dx) != (2,):
             debug  = 1
@@ -191,91 +280,7 @@ class Backend():
         return children, more_children
 
 
-
-    def optimize(self):
-        # Find loop closures
-        self.find_loop_closures()
-
-        # plt.ion()
-        self.plot_graph(self.G, "full graph (TRUTH)", figure_handle=1)
-        self.plot_agent(self.G, agent=0, figure_handle=1, color ='c')
-        self.plot_agent(self.G, agent=10, figure_handle=1, color='y')
-        self.plot_agent(self.G, agent=20, figure_handle=1, color='g')
-
-        # Get a minimum spanning tree of nodes connected to our origin node
-        min_spanning_tree = nx.Graph()
-        for component in sorted(nx.connected_component_subgraphs(self.G, copy=True), key=len, reverse=True):
-            if '0_000' in component.node:
-                self.plot_graph(component, "connected component truth", figure_handle=2, edge_color='r')
-                # Find Initial Guess for node positions
-                component.node['0_000']['pose'] = [0, 0, 0]
-                self.seed_graph(component, '0_000')
-                self.plot_graph(component, "connected component unoptimized", figure_handle=3, edge_color='m')
-                self.plot_agent(component, agent=0, figure_handle=3, color='c')
-                self.plot_agent(component, agent=10, figure_handle=3, color='y')
-                self.plot_agent(component, agent=20, figure_handle=3, color='g')
-
-                # Let GTSAM crunch it
-                print("optimizing")
-                optimized_component = self.call_gtsam(component)
-                self.plot_graph(optimized_component, "optimized", figure_handle=4, edge_color='b')
-                self.plot_agent(optimized_component, agent=0, figure_handle=4)
-                self.plot_agent(optimized_component, agent=10, figure_handle=4, color='y')
-                self.plot_agent(optimized_component, agent=20, figure_handle=4, color='g')
-
-        plt.show()
-
-
-    def call_gtsam(self, graph):
-
-        # Build nodes list
-        nodes = []
-        for i in sorted(graph.nodes_iter()):
-            nodes.append([i, graph.node[i]['pose'][0], graph.node[i]['pose'][1], graph.node[i]['pose'][2]])
-
-        # Fix agent 0, node 0 as global origin (Could be moved)
-        fixed_node = "0_000"
-
-        # Build edges list
-        edges = []
-        for pair in graph.edges():
-            i = pair[0]
-            j = pair[1]
-            edge = graph.edge[i][j]
-            edges.append([edge['from_id'], edge['to_id'],
-                          self.G.edge[i][j]['transform'][0],
-                          self.G.edge[i][j]['transform'][1],
-                          self.G.edge[i][j]['transform'][2],
-                          self.G.edge[i][j]['covariance'][0][0],
-                          self.G.edge[i][j]['covariance'][1][1],
-                          self.G.edge[i][j]['covariance'][2][2]])
-
-        # run GTSAM
-        self.optimizer.new_graph(nodes, edges, fixed_node)
-        self.optimizer.optimize()
-        optimized_values = self.optimizer.get_optimized()
-
-        # Create a new graph of optimized values
-        optimized_graph = nx.Graph()
-        for node in optimized_values["nodes"]:
-            node_id = node[0]
-            optimized_graph.add_node(node_id, pose=[node[1], node[2], node[3]], vehicle_id=node_id.split("_")[0],
-                                     KF = self.G.node[node_id]['KF'])
-
-        for edge in optimized_values["edges"]:
-            from_id = edge[0]
-            to_id = edge[1]
-            transform = self.find_transform(np.array(graph.node[from_id]['pose']),
-                                            np.array(graph.node[to_id]['pose']))
-            # Total guess about covariance for optimized edges
-            P = [[0.00001, 0, 0],
-                 [0, 0.00001, 0],
-                 [0, 0, 0.00001]]
-            optimized_graph.add_edge(from_id, to_id, transform=transform, covariance=P)
-        return optimized_graph
-
-
-    def plot_graph(self, graph, title='default', name='default', arrows=False, figure_handle=0, edge_color='m', lc_color='y'):
+    def plot_graph(self, graph, title='default', name='default', arrows=False, figure_handle=0, edge_color='m', lc_color='y', truth=False):
         if figure_handle:
             plt.figure(figure_handle)
         else:
@@ -287,10 +292,16 @@ class Backend():
         # Get positions of all nodes
         plot_positions = dict()
         for (i, n) in graph.node.iteritems():
-            if 'pose' in n:
-                plot_positions[i] = [n['pose'][1], n['pose'][0]]
+            if truth:
+                try:
+                    plot_positions[i] = [n['KF'][1], n['KF'][0]]
+                except:
+                    sys.exit("missing KF keys")
             else:
-                plot_positions[i] = [n['KF'][1], n['KF'][0]]
+                try:
+                        plot_positions[i] = [n['pose'][1], n['pose'][0]]
+                except:
+                    sys.exit("missing pose keys")
 
         nx.draw_networkx(graph, pos=plot_positions,
                          with_labels=False, ax=ax, edge_color=edge_color,
@@ -335,5 +346,7 @@ class Backend():
             plt.figure()
 
         plt.plot(y, x, color=color, lw=4)
+
+
 
 

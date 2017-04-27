@@ -31,6 +31,12 @@ pybind11_add_module(backend_optimizer
     include/backend_optimizer.h
 )
 
+pybind11_add_module(kdtree
+    src/kdtree.cpp
+    include/kdtree.h
+    include/nanoflann.hpp
+)
+
 ## Specify libraries to link a library or executable target against
 target_link_libraries(backend_optimizer gtsam)
 

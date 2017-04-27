@@ -33,6 +33,8 @@ public:
     BackendOptimizer();
     py::list cumsum(py::list list_to_sum);
     int new_graph(std::string fixed_node);
+    void add_edge_batch(py::list nodes, py::list edges);
+    void add_lc_batch(py::list edges);
     void add_edge(py::list node, py::list edge);
     void add_loop_closure(py::list edge);
     void optimize();
@@ -40,8 +42,9 @@ public:
     py::dict get_global_pose_and_covariance(std::string node);
 
 private:
+
     std::string fixed_node_;
-    Values initialEstimate_;
+    bool graph_fixed_;
     ISAM2Params parameters_;
     ISAM2Result result_;
     ISAM2 optimizer_;

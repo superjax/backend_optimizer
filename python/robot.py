@@ -71,7 +71,8 @@ class Robot():
         return [self.xI, self.yI, self.psiI]
 
     def reset(self):
-        self.keyframes.append([self.xI, self.yI, self.psiI])
+        keyframe = [self.xI, self.yI, self.psiI]
+        self.keyframes.append(keyframe)
         edge = [self.x, self.y, self.psi]
         true_edge = [self.x_true, self.y_true, self.psi_true]
         self.edges.append(edge)
@@ -85,6 +86,11 @@ class Robot():
         self.x_true = 0
         self.y_true = 0
         self.psi_true = 0
+
+        return edge, keyframe
+
+    def keyframe_id(self):
+        return len(self.keyframes)
 
     def concatenate_edges(self, edge1, edge2):
         x0 = edge1[0]

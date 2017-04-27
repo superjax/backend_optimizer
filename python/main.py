@@ -6,11 +6,11 @@ from tqdm import tqdm
 
 if __name__ == "__main__":
     dt = 0.1
-    time = np.arange(0, 120.01, dt)
+    time = np.arange(0, 5000.01, dt)
 
     robots = []
     controllers = []
-    num_robots = 500
+    num_robots = 1
     KF_frequency_s = 1.0
 
     map = Backend("Noisy Map")
@@ -24,27 +24,32 @@ if __name__ == "__main__":
     start_poses[0] = [0, 0, 0]
 
     P_perfect = np.array([[0.00001, 0, 0], [0, 0.00001, 0], [0, 0, 0.00001]])
-    G = np.array([[0.01, 0, 0], [0, 0.01, 0], [0, 0, 0.05]])
+    G = np.array([[0.01, 0, 0], [0, 0.01, 0], [0, 0, 0.1]])
     print("simulating robots")
-    for r in tqdm(range(num_robots)):
-        # Run each robot through the trajectory
-        robots.append(Robot(r, G, start_poses[r]))
-        controllers.append(Controller(start_poses[r]))
-        for t in time:
+
+    controllers = [Controller(start_poses[r]) for r in range(num_robots)]
+    robots = [Robot(r, G, start_poses[r]) for r in range(num_robots)]
+
+    for r in range(num_robots):
+        map.add_agent(r, start_poses[r])
+
+
+    for t in tqdm(time):
+        for r in range(num_robots):
+            # Run each robot through the trajectory
             u = controllers[r].control(t, robots[r].state())
             robots[r].propagate_dynamics(u, dt)
             if t % KF_frequency_s == 0 and t > 0:
-                robots[r].reset()
+                # Declare a new keyframe
+                edge, KF = robots[r].reset()
 
-        # robots[r].draw_trajectory()
+                e = Edge(r, str(r) + "_" + str(robots[r].keyframe_id() - 1).zfill(3),
+                         str(r) + "_" + str(robots[r].keyframe_id()).zfill(3), G,
+                         edge, KF)
+                map.add_odometry(e)
+    map.process_batch()
 
-        # Put edges in backend
-        i = 0
-        map.add_agent(r, KF=start_poses[r])
-        for edge, KF in zip(robots[r].edges, robots[r].keyframes):
-            e = Edge(r, str(r) + "_" + str(i).zfill(3), str(r) + "_" + str(i+1).zfill(3), G, edge, KF)
-            map.add_edge(e)
-            i += 1
+    map.plot()
+    plt.show()
 
-    map.optimize()
-
+    debug = 1
