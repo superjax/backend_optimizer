@@ -2,30 +2,36 @@ from backend import *
 from robot import *
 from controller import *
 from tqdm import tqdm
+import os
 
 
 if __name__ == "__main__":
+    os.chdir("movie")
+    os.system('rm *.png')
+    os.system('rm *.avi')
+    os.chdir("..")
     dt = 0.1
-    time = np.arange(0, 100.01, dt)
+    time = np.arange(0, 120.01, dt)
 
     robots = []
     controllers = []
-    num_robots = 2
+    num_robots = 100
     KF_frequency_s = 1.0
+    plot_frequency_s = 1.0
 
     map = Backend("Noisy Map")
     true_map = Backend("True Map")
 
-    start_pose_range = [15, 15, 2]
+    start_pose_range = [5, 5, 2]
 
     start_poses = [[randint(-start_pose_range[0], start_pose_range[0])*10,
                    randint(-start_pose_range[1], start_pose_range[1])*10,
                    randint(-start_pose_range[2], start_pose_range[2])*pi/2] for r in range(num_robots)]
     start_poses[0] = [0, 0, 0]
-    start_poses[1] = [10, 0, pi/2]
+    # start_poses[1] = [10, 0, pi/2]
 
     P_perfect = np.array([[0.00001, 0, 0], [0, 0.00001, 0], [0, 0, 0.00001]])
-    G = np.array([[0.01, 0, 0], [0, 0.01, 0], [0, 0, 0.08]])
+    G = np.array([[0.01, 0, 0], [0, 0.01, 0], [0, 0, 0.1]])
     print("simulating robots")
 
     controllers = [Controller(start_poses[r]) for r in range(num_robots)]
@@ -47,10 +53,21 @@ if __name__ == "__main__":
                 e = Edge(r, str(r) + "_" + str(robots[r].keyframe_id() - 1).zfill(3),
                          str(r) + "_" + str(robots[r].keyframe_id()).zfill(3), G,
                          edge, KF)
-                map.add_odometry(e)
-    map.finish_up()
+                map.add_odometry( e)
+        if t % plot_frequency_s == 0 and t > 0:
+            map.plot()
 
+    map.finish_up()
     map.plot()
+
+    print('Making movie - this make take a while')
+    os.chdir('movie')
+    os.system("mencoder mf://unoptimized*.png -mf w=800:h=600:fps=25:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o unoptimized.avi")
+    os.system("mencoder mf://optimized*.png -mf w=800:h=600:fps=25:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o optimized.avi")
+    os.system("mencoder mf://truth*.png -mf w=800:h=600:fps=25:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o truth.avi")
+
     plt.show()
+
+
 
     debug = 1

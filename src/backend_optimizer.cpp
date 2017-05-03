@@ -10,6 +10,8 @@ BackendOptimizer::BackendOptimizer() :
 {
   parameters_.relinearizeThreshold = 0.01;
   parameters_.relinearizeSkip = 1;
+  parameters_.enablePartialRelinearizationCheck = true;
+  parameters_.factorization = ISAM2Params::QR;
 
   edge_constraints_.clear();
   edge_list_.clear();
@@ -27,6 +29,7 @@ int BackendOptimizer::new_graph(std::string fixed_node)
   edge_constraints_.clear();
   edge_list_.clear();
   optimizer_.clear();
+  optimizer_ = ISAM2(parameters_);
   fixed_node_ = fixed_node;
   graph_fixed_ = false;
   node_name_to_id_map_.clear();
@@ -42,19 +45,21 @@ int BackendOptimizer::new_graph(std::string fixed_node)
 
 void BackendOptimizer::add_edge_batch(py::list nodes, py::list edges)
 {
+  std::cout << "adding ";
   NonlinearFactorGraph new_graph;
   Values new_initial_estimates;
 
   // convert the nodes
-//  std::cout << "adding nodes \n";
+  //  std::cout << "adding nodes \n";
   std::vector<py::list> stl_nodes = nodes.cast<std::vector<py::list>>();
+  std::cout << stl_nodes.size() << " odometry edges ";
   for (int i = 0; i < stl_nodes.size(); i++)
   {
     std::string id = stl_nodes[i][0].cast<std::string>();
     double x = stl_nodes[i][1].cast<double>();
     double y = stl_nodes[i][2].cast<double>();
     double z = stl_nodes[i][3].cast<double>();
-//    std::cout << x << ", " << y << ", " << z << "\n";
+    //    std::cout << x << ", " << y << ", " << z << "\n";
 
     // connect the name of this node to an integer index
     node_name_to_id_map_[id] = num_nodes_;
@@ -100,15 +105,21 @@ void BackendOptimizer::add_edge_batch(py::list nodes, py::list edges)
   }
 
   // Add the new edge to the graph
+  clock_t start_time = std::clock();
   result_ = optimizer_.update(new_graph, new_initial_estimates);
+  clock_t time = std::clock() - start_time;
+
+  std::cout << "took " << ((float)time)/CLOCKS_PER_SEC << " seconds " << std::endl;
 }
 
 void BackendOptimizer::add_lc_batch(pybind11::list edges)
 {
   NonlinearFactorGraph new_graph;
+  std::cout << "adding ";
 
   // extract edges
   std::vector<py::list> stl_edges = edges.cast<std::vector<py::list>>();
+  std::cout << stl_edges.size() << " loop closures ";
   for (int i = 0; i < stl_edges.size(); i++)
   {
     std::string from = stl_edges[i][0].cast<std::string>();
@@ -133,37 +144,38 @@ void BackendOptimizer::add_lc_batch(pybind11::list edges)
   }
 
   // Add the new edges to the graph
-  result_ = optimizer_.update(new_graph);
-}
-
-void BackendOptimizer::optimize()
-{
   clock_t start_time = std::clock();
-
-  for(int i = 0; i < 10; i++)
-  {
-    result_ = optimizer_.update();
-  }
-
+  result_ = optimizer_.update(new_graph);
   clock_t time = std::clock() - start_time;
 
-  std::cout << "took " << time << " ticks or " << ((float)time)/CLOCKS_PER_SEC << " seconds " << std::endl;
-  std::cout << "optimized " << num_nodes_ << " nodes and " << num_edges_ << " edges " << std::endl;
-  result_.print("optimization results:");
+  std::cout << "took " << ((float)time)/CLOCKS_PER_SEC << " seconds " << std::endl;
+}
+
+double BackendOptimizer::optimize()
+{
+  clock_t start_time = std::clock();
+  result_ = optimizer_.update();
+  clock_t time = std::clock() - start_time;
+
+  std::cout << "optimization took " << ((float)time)/CLOCKS_PER_SEC << " seconds " << std::endl;
+
+  return ((float)time)/CLOCKS_PER_SEC;
+  //  std::cout << "optimized " << num_nodes_ << " nodes and " << num_edges_ << " edges " << std::endl;
+  //  result_.print("optimization results:");
 }
 
 py::dict BackendOptimizer::get_optimized()
 {
-//  std::cout << "\n\nname to id map\n\n";
-//  for(auto elem : node_id_to_name_map_)
-//  {
-//     std::cout << elem.first << " " << elem.second << "\n";
-//  }
-//  for(auto elem : node_name_to_id_map_)
-//  {
-//     std::cout << elem.first << " " << elem.second << "\n";
-//  }
-//  optimizer_.print("status");
+  //  std::cout << "\n\nname to id map\n\n";
+  //  for(auto elem : node_id_to_name_map_)
+  //  {
+  //     std::cout << elem.first << " " << elem.second << "\n";
+  //  }
+  //  for(auto elem : node_name_to_id_map_)
+  //  {
+  //     std::cout << elem.first << " " << elem.second << "\n";
+  //  }
+  //  optimizer_.print("status");
 
   Values optimized_values = optimizer_.calculateBestEstimate();
 

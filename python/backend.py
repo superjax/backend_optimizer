@@ -10,6 +10,7 @@ from tqdm import tqdm
 import subprocess
 import scipy.spatial
 import sys
+import matplotlib.animation as manimation
 
 
 class Node():
@@ -33,13 +34,14 @@ class Edge():
 class Agent():
     def __init__(self, id):
         self.id  = id
-        self.loop_closed = False
+        self.loop_closures = []
+        self.connected_to_origin = False
 
 class Backend():
     def __init__(self, name="default"):
         self.name = name
         self.G = nx.Graph()
-        self.LC_threshold = 0.75
+        self.LC_threshold = 0.50
         self.overlap_threshold = 0.75
         self.node_id_map = dict()
         self.agents = []
@@ -53,6 +55,7 @@ class Backend():
         self.tree = []
         self.new_keyframes = []
         self.loop_closure_throttle_counter = 0
+        self.number_of_loop_closed_agents = 0
 
         self.keyframe_index_to_id_map = dict()
         self.keyframe_id_to_index_map = dict()
@@ -60,6 +63,9 @@ class Backend():
         self.current_keyframe_index = 0
 
         self.optimizer = backend_optimizer.Optimizer()
+
+        self.frame_number = 0
+
 
 
     def add_keyframe(self, KF, node_id):
@@ -81,7 +87,7 @@ class Backend():
         self.add_keyframe(KF, str(vehicle_id)+"_000")
 
         if vehicle_id == 0:
-            self.agents[0].loop_closed = True
+            self.agents[0].connected_to_origin = True
             self.G.node['0_000']['pose'] = [0, 0, 0]
             self.optimizer.new_graph('0_000')
 
@@ -97,7 +103,7 @@ class Backend():
 
         # Prepare this edge for Optimizer
         vehicle_id = int(edge.from_id.split("_")[0])
-        if self.agents[vehicle_id].loop_closed:
+        if self.agents[vehicle_id].connected_to_origin:
             # Guess on pose of this node
             try:
                 from_pose = self.G.node[edge.from_id]['pose']
@@ -121,9 +127,9 @@ class Backend():
             self.loop_closure_throttle_counter = 0
             self.find_loop_closures()
 
-        if len(self.node_buffer_for_optimizer) >= 10:
+
+        if len(self.node_buffer_for_optimizer) >= 2500:
             self.update_gtsam()
-            self.optimizer.optimize()
 
 
     def finish_up(self):
@@ -134,11 +140,16 @@ class Backend():
 
     def update_gtsam(self):
         self.optimizer.add_edge_batch(self.node_buffer_for_optimizer, self.edge_buffer_for_optimizer)
+
         self.node_buffer_for_optimizer = []
         self.edge_buffer_for_optimizer = []
 
+
         self.optimizer.add_lc_batch(self.lc_buffer_for_optimizer)
+
         self.lc_buffer_for_optimizer = []
+        self.optimizer.optimize()
+        self.optimizer.optimize()
 
 
     def update_keyframe_tree(self):
@@ -150,6 +161,9 @@ class Backend():
         for from_node_id in self.new_keyframes:
             keyframe_pose = self.G.node[from_node_id]['KF']
             indices = self.tree.query_ball_point(keyframe_pose, self.LC_threshold)
+
+            if len(self.lc_buffer_for_optimizer) > 500:
+                self.update_gtsam()
 
             # TODO USE THE CLOSEST NODE, not just the first index
             for index in indices:
@@ -169,21 +183,36 @@ class Backend():
                 self.G.add_edge(from_node_id, to_node_id, covariance=covariance, transform=transform,
                                 from_id=from_node_id, to_id=to_node_id)
 
-                # If only of the agents have been loop-closed
-                if self.agents[to_vehicle_id].loop_closed != self.agents[from_vehicle_id].loop_closed:
-                    if not self.agents[to_vehicle_id].loop_closed:
+                # If only one of the agents have been connected to the origin
+                if self.agents[to_vehicle_id].connected_to_origin != self.agents[from_vehicle_id].connected_to_origin:
+                    if not self.agents[to_vehicle_id].connected_to_origin:
                         self.initialize_new_loop_closed_agent(to_vehicle_id)
                     else:
                         self.initialize_new_loop_closed_agent(from_vehicle_id)
+                    # Add the edge to the GTSAM optimizer
+                    opt_edge = [from_node_id, to_node_id, transform[0], transform[1], transform[2],
+                                covariance[0][0], covariance[1][1], covariance[2][2]]
+                    self.lc_buffer_for_optimizer.append(opt_edge)
+                    self.update_gtsam()
+                    self.number_of_loop_closed_agents += 1
+                    break
 
-                # If both agents have been loop-closed already
-                if self.agents[to_vehicle_id].loop_closed and self.agents[from_vehicle_id].loop_closed:
+                # If both agents are already connected to the origin
+                if self.agents[to_vehicle_id].connected_to_origin and self.agents[from_vehicle_id].connected_to_origin:
                     # Add the edge to the GTSAM optimizer
                     opt_edge = [from_node_id, to_node_id, transform[0], transform[1], transform[2],
                                 covariance[0][0], covariance[1][1], covariance[2][2]]
                     self.lc_buffer_for_optimizer.append(opt_edge)
                     break
 
+                # Neither agent has been connected to the origin
+                else:
+                    # Register that the vehicles are loop closed
+                    if from_vehicle_id not in self.agents[to_vehicle_id].loop_closures:
+                        self.agents[to_vehicle_id].loop_closures.append(from_vehicle_id)
+                    if to_vehicle_id not in self.agents[from_vehicle_id].loop_closures:
+                        self.agents[from_vehicle_id].loop_closures.append(to_vehicle_id)
+                    break
         self.new_keyframes = []
 
 
@@ -212,28 +241,27 @@ class Backend():
 
                 # Also pump it into the optimizer
                 out_node = [node, x, y, psi]
-                out_edge = [edge.from_id, edge.to_id, edge.transform[0], edge.transform[1], edge.transform[2],
-                            edge.covariance[0][0], edge.covariance[1][1], edge.covariance[2][2]]
+                out_edge = [edge['from_id'], edge['to_id'], edge['transform'][0], edge['transform'][1], edge['transform'][2],
+                            edge['covariance'][0][0], edge['covariance'][1][1], edge['covariance'][2][2]]
                 self.node_buffer_for_optimizer.append(out_node)
                 self.edge_buffer_for_optimizer.append(out_edge)
 
         # Initialize all the other poses
         last_node = self.find_last_node_for_agent(agent)
-        path_to_last_node = nx.shortest_path(self.G, str(agent)+"_000", last_node)
+        path_to_last_node = [str(agent)+"_"+ str(i).zfill(3) for i in range(last_node +1 )]
 
         for i in range(len(path_to_last_node)):
             node = path_to_last_node[i]
             if not 'pose' in self.G.node[node]:
-                edge = self.G.edge[path_to_start_of_agent[i-1]][node]
-
-                if edge.from_id == path_to_start_of_agent[i-1]:
-                    from_pose = self.G.node[path_to_start_of_agent[i-1]]['pose']
+                edge = self.G.edge[path_to_last_node[i-1]][node]
+                if edge['from_id'] == path_to_last_node[i-1]:
+                    from_pose = self.G.node[path_to_last_node[i-1]]['pose']
                     psi0 = from_pose[2]
-                    x = from_pose[0] + edge.transform[0] * cos(psi0) - edge.transform[1] * sin(psi0)
-                    y = from_pose[1] + edge.transform[0] * sin(psi0) + edge.transform[1] * cos(psi0)
-                    psi = psi0 + edge.transform[2]
+                    x = from_pose[0] + edge['transform'][0] * cos(psi0) - edge['transform'][1] * sin(psi0)
+                    y = from_pose[1] + edge['transform'][0] * sin(psi0) + edge['transform'][1] * cos(psi0)
+                    psi = psi0 + edge['transform'][2]
                 else:
-                    to_pose = self.G.node[path_to_start_of_agent[i - 1]]['pose']
+                    to_pose = self.G.node[path_to_last_node[i - 1]]['pose']
                     psi = to_pose[2] - edge['transform'][2]
                     x = to_pose[0] - edge['transform'][0] * cos(psi) + edge['transform'][1] * sin(psi)
                     y = to_pose[1] - edge['transform'][0] * sin(psi) - edge['transform'][1] * cos(psi)
@@ -241,12 +269,21 @@ class Backend():
 
                 # Pump these into the optimizer as well
                 out_node = [node, x, y, psi]
-                out_edge = [edge.from_id, edge.to_id, edge.transform[0], edge.transform[1], edge.transform[2],
-                            edge.covariance[0][0], edge.covariance[1][1], edge.covariance[2][2]]
+                out_edge = [edge['from_id'], edge['to_id'], edge['transform'][0], edge['transform'][1], edge['transform'][2],
+                            edge['covariance'][0][0], edge['covariance'][1][1], edge['covariance'][2][2]]
                 self.node_buffer_for_optimizer.append(out_node)
                 self.edge_buffer_for_optimizer.append(out_edge)
         # signal that this agent has been loop-closed
-        self.agents[agent].loop_closed = True
+        self.agents[agent].connected_to_origin = True
+
+        # Signal that we need to do an update
+        self.loop_closure_throttle_counter = 10000
+
+        # Recursively initialize any agents connected to this agent
+        for connected_agent in self.agents[agent].loop_closures:
+            if not self.agents[connected_agent].connected_to_origin:
+                self.initialize_new_loop_closed_agent(connected_agent)
+
 
 
     def find_last_node_for_agent(self, agent):
@@ -254,38 +291,66 @@ class Backend():
         for n in self.G.nodes():
             vid = int(n.split("_")[0])
             if vid == agent:
-                nnum = n.split("_")[1]
+                nnum = int(n.split("_")[1])
                 if nnum > max_node:
                     max_node = nnum
-        return str(agent) + "_" + str(max_node)
+        return max_node
 
 
 
     def plot(self):
-        self.plot_graph(self.G, title="truth", edge_color='g', truth=True)
-        self.plot_graph(self.G, title="unoptimized", edge_color='r')
+        self.update_gtsam()
 
-        # optimized_values = self.optimizer.get_optimized()
+        plt.ion()
+        for i in range(3):
+            plt.figure(i+1)
+            plt.clf()
 
-        # # Create a new graph of optimized values
-        # optimized_values = self.optimizer.get_optimized()
-        # optimized_graph = nx.Graph()
-        # for node in optimized_values["nodes"]:
-        #     node_id = node[0]
-        #     optimized_graph.add_node(node_id,
-        #                              pose=[node[1], node[2], node[3]],
-        #                              vehicle_id=node_id.split("_")[0],
-        #                              KF=self.G.node[node_id]['KF'])
-        #
-        # for edge in optimized_values["edges"]:
-        #     from_id = edge[0]
-        #     to_id = edge[1]
-        #     transform = [edge[2], edge[3], edge[4]]
-        #     # Total guess about covariance for optimized edges
-        #     P = [edge[5], 0, 0, 0, edge[6], 0, 0, 0, edge[7]]
-        #     optimized_graph.add_edge(from_id, to_id, transform=transform, covariance=P)
-        #
-        # self.plot_graph(optimized_graph, title="optimized", edge_color='b')
+        self.plot_graph(self.G, title="truth", edge_color='g', truth=True, figure_handle=1)
+        self.plot_graph(self.G, title="unoptimized", edge_color='r', figure_handle=2)
+        self.plot_agent(self.G, agent=0, figure_handle=1, color='c', truth=True)
+        self.plot_agent(self.G, agent=0, figure_handle=2, color='c')
+
+        self.plot_agent(self.G, agent=10, figure_handle=1, color='y', truth=True)
+        self.plot_agent(self.G, agent=10, figure_handle=2, color='y')
+
+        self.plot_agent(self.G, agent=20, figure_handle=1, color='m', truth=True)
+        self.plot_agent(self.G, agent=20, figure_handle=2, color='m')
+
+        # Create a new graph of optimized values
+        optimized_values = self.optimizer.get_optimized()
+        optimized_graph = nx.Graph()
+        for node in optimized_values["nodes"]:
+            node_id = node[0]
+            optimized_graph.add_node(node_id,
+                                     pose=[node[1], node[2], node[3]],
+                                     vehicle_id=node_id.split("_")[0],
+                                     KF=self.G.node[node_id]['KF'])
+
+        for edge in optimized_values["edges"]:
+            from_id = edge[0]
+            to_id = edge[1]
+            transform = [edge[2], edge[3], edge[4]]
+            # Total guess about covariance for optimized edges
+            P = [edge[5], 0, 0, 0, edge[6], 0, 0, 0, edge[7]]
+            optimized_graph.add_edge(from_id, to_id, transform=transform, covariance=P)
+
+        self.plot_graph(optimized_graph, title="optimized", edge_color='b', figure_handle=3)
+        self.plot_agent(optimized_graph, agent=0, figure_handle=3, color='c')
+        self.plot_agent(optimized_graph, agent=10, figure_handle=3, color='y')
+        self.plot_agent(optimized_graph, agent=20, figure_handle=3, color='m')
+        plt.pause(0.005) # delay for painting process
+
+
+        # Save frames for future movie making
+        plt.figure(1)
+        plt.savefig("movie/truth_" + str(self.frame_number).zfill(4) + ".png")
+        plt.figure(2)
+        plt.savefig("movie/unoptimized_" + str(self.frame_number).zfill(4) + ".png")
+        plt.figure(3)
+        plt.savefig("movie/optimized_" + str(self.frame_number).zfill(4) + ".png")
+        self.frame_number += 1
+        plt.ioff()
 
 
     def find_transform(self, from_pose, to_pose):
@@ -381,19 +446,23 @@ class Backend():
         plt.title(title)
         ax = plt.subplot(111)
 
+        # If we are trying to plot estimates, only plot the connected component
+        for subcomponent in nx.connected_component_subgraphs(graph):
+            if '0_000' in subcomponent.nodes():
+                graph = subcomponent.copy()
+
         # Get positions of all nodes
         plot_positions = dict()
         for (i, n) in graph.node.iteritems():
             if truth:
-                try:
-                    plot_positions[i] = [n['KF'][1], n['KF'][0]]
-                except:
-                    sys.exit("missing KF keys")
+                plot_positions[i] = [n['KF'][1], n['KF'][0]]
             else:
                 try:
-                        plot_positions[i] = [n['pose'][1], n['pose'][0]]
+                    plot_positions[i] = [n['pose'][1], n['pose'][0]]
                 except:
-                    sys.exit("missing pose keys")
+                    debug = 1
+
+
 
         nx.draw_networkx(graph, pos=plot_positions,
                          with_labels=False, ax=ax, edge_color=edge_color,
@@ -418,19 +487,23 @@ class Backend():
 
         plt.axis("equal")
 
-    def plot_agent(self,graph, agent, figure_handle=0, color='c'):
+    def plot_agent(self,graph, agent, figure_handle=0, color='c', truth=False):
         nodes = sorted(graph.node)
         agent_nodes = []
         x = []
         y = []
         for n in nodes:
             if int(n.split("_")[0]) == agent:
-                if 'pose' in graph.node[n]:
-                    x.append(graph.node[n]['pose'][0])
-                    y.append(graph.node[n]['pose'][1])
-                else:
+                if truth:
                     x.append(graph.node[n]['KF'][0])
                     y.append(graph.node[n]['KF'][1])
+                else:
+                    try:
+                        x.append(graph.node[n]['pose'][0])
+                        y.append(graph.node[n]['pose'][1])
+                    except:
+                        break
+
 
         if figure_handle:
             plt.figure(figure_handle)

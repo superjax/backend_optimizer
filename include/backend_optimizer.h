@@ -33,11 +33,11 @@ public:
     BackendOptimizer();
     py::list cumsum(py::list list_to_sum);
     int new_graph(std::string fixed_node);
-    void add_edge_batch(py::list nodes, py::list edges);
-    void add_lc_batch(py::list edges);
+    double add_edge_batch(py::list nodes, py::list edges);
+    double add_lc_batch(py::list edges);
     void add_edge(py::list node, py::list edge);
     void add_loop_closure(py::list edge);
-    void optimize();
+    double  optimize();
     py::dict get_optimized();
     py::dict get_global_pose_and_covariance(std::string node);
 
