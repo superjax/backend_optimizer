@@ -11,7 +11,7 @@ if __name__ == "__main__":
     os.system('rm *.avi')
     os.chdir("..")
     dt = 0.1
-    time = np.arange(0, 120.01, dt)
+    time = np.arange(0, 600.01, dt)
 
     robots = []
     controllers = []
@@ -22,7 +22,7 @@ if __name__ == "__main__":
     map = Backend("Noisy Map")
     true_map = Backend("True Map")
 
-    start_pose_range = [5, 5, 2]
+    start_pose_range = [8, 8, 2]
 
     start_poses = [[randint(-start_pose_range[0], start_pose_range[0])*10,
                    randint(-start_pose_range[1], start_pose_range[1])*10,
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     # start_poses[1] = [10, 0, pi/2]
 
     P_perfect = np.array([[0.00001, 0, 0], [0, 0.00001, 0], [0, 0, 0.00001]])
-    G = np.array([[0.01, 0, 0], [0, 0.01, 0], [0, 0, 0.1]])
+    G = np.array([[0.01, 0, 0], [0, 0.01, 0], [0, 0, 0.05]])
     print("simulating robots")
 
     controllers = [Controller(start_poses[r]) for r in range(num_robots)]
@@ -62,9 +62,9 @@ if __name__ == "__main__":
 
     print('Making movie - this make take a while')
     os.chdir('movie')
-    os.system("mencoder mf://unoptimized*.png -mf w=800:h=600:fps=25:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o unoptimized.avi")
-    os.system("mencoder mf://optimized*.png -mf w=800:h=600:fps=25:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o optimized.avi")
-    os.system("mencoder mf://truth*.png -mf w=800:h=600:fps=25:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o truth.avi")
+    os.system("mencoder mf://unoptimized*.png -mf w=800:h=600:fps=10:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o unoptimized.avi")
+    os.system("mencoder mf://optimized*.png -mf w=800:h=600:fps=10:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o optimized.avi")
+    os.system("mencoder mf://truth*.png -mf w=800:h=600:fps=10:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o truth.avi")
 
     plt.show()
 
