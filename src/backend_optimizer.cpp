@@ -43,7 +43,7 @@ int BackendOptimizer::new_graph(std::string fixed_node)
   num_nodes_++;
 }
 
-void BackendOptimizer::add_edge_batch(py::list nodes, py::list edges)
+double BackendOptimizer::add_edge_batch(py::list nodes, py::list edges)
 {
   std::cout << "adding ";
   NonlinearFactorGraph new_graph;
@@ -110,9 +110,11 @@ void BackendOptimizer::add_edge_batch(py::list nodes, py::list edges)
   clock_t time = std::clock() - start_time;
 
   std::cout << "took " << ((float)time)/CLOCKS_PER_SEC << " seconds " << std::endl;
+
+  return ((float)time)/CLOCKS_PER_SEC;
 }
 
-void BackendOptimizer::add_lc_batch(pybind11::list edges)
+double BackendOptimizer::add_lc_batch(pybind11::list edges)
 {
   NonlinearFactorGraph new_graph;
   std::cout << "adding ";
@@ -149,6 +151,7 @@ void BackendOptimizer::add_lc_batch(pybind11::list edges)
   clock_t time = std::clock() - start_time;
 
   std::cout << "took " << ((float)time)/CLOCKS_PER_SEC << " seconds " << std::endl;
+  return ((float)time)/CLOCKS_PER_SEC;
 }
 
 double BackendOptimizer::optimize()

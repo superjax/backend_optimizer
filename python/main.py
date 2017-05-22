@@ -11,7 +11,7 @@ if __name__ == "__main__":
     os.system('rm *.avi')
     os.chdir("..")
     dt = 0.1
-    time = np.arange(0, 600.01, dt)
+    time = np.arange(0, 180.01, dt)
 
     robots = []
     controllers = []
@@ -31,11 +31,12 @@ if __name__ == "__main__":
     # start_poses[1] = [10, 0, pi/2]
 
     P_perfect = np.array([[0.00001, 0, 0], [0, 0.00001, 0], [0, 0, 0.00001]])
-    G = np.array([[0.01, 0, 0], [0, 0.01, 0], [0, 0, 0.05]])
+    G = np.array([[0.01, 0, 0], [0, 0.01, 0], [0, 0, 0.08]])
     print("simulating robots")
 
     controllers = [Controller(start_poses[r]) for r in range(num_robots)]
     robots = [Robot(r, G, start_poses[r]) for r in range(num_robots)]
+    backends = [Backend()]
 
     for r in range(num_robots):
         map.add_agent(r, start_poses[r])

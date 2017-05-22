@@ -437,7 +437,8 @@ class Backend():
         return children, more_children
 
 
-    def plot_graph(self, graph, title='default', name='default', arrows=False, figure_handle=0, edge_color='m', lc_color='y', truth=False):
+    def plot_graph(self, graph, title='default', name='default', arrows=False, figure_handle=0, edge_color='m',
+                   truth=False, plot_lc=False):
         if figure_handle:
             plt.figure(figure_handle)
         else:
@@ -462,7 +463,15 @@ class Backend():
                 except:
                     debug = 1
 
-
+        # Remove Loop Closures
+        if not plot_lc:
+            for pair in graph.edges():
+                i = pair[0]
+                j = pair[1]
+                vID_i = int(i.split("_")[0])
+                vID_j = int(j.split("_")[0])
+                if vID_i != vID_j:
+                    graph.remove_edge(i, j)
 
         nx.draw_networkx(graph, pos=plot_positions,
                          with_labels=False, ax=ax, edge_color=edge_color,
