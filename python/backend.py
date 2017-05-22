@@ -10,6 +10,7 @@ from tqdm import tqdm
 import subprocess
 import scipy.spatial
 import sys
+import os
 import matplotlib.animation as manimation
 
 
@@ -38,13 +39,14 @@ class Agent():
         self.connected_to_origin = False
 
 class Backend():
-    def __init__(self, name="default"):
+    def __init__(self, agent, origin_KF, name="default"):
         self.name = name
+        self.agent = agent
         self.G = nx.Graph()
         self.LC_threshold = 0.50
         self.overlap_threshold = 0.75
         self.node_id_map = dict()
-        self.agents = []
+        self.agents = dict()
         self.optimized = True
 
         self.odometry_buffer = []
@@ -80,16 +82,17 @@ class Backend():
     def add_agent(self, vehicle_id, KF):
         # Tell the backend to keep track of this agent
         new_agent = Agent(vehicle_id)
-        self.agents.append(new_agent)
+        self.agents[vehicle_id] = new_agent
         self.G.add_node(str(vehicle_id)+"_000", KF=KF)
 
         # Add keyframe to the map
         self.add_keyframe(KF, str(vehicle_id)+"_000")
 
-        if vehicle_id == 0:
-            self.agents[0].connected_to_origin = True
-            self.G.node['0_000']['pose'] = [0, 0, 0]
-            self.optimizer.new_graph('0_000')
+        if vehicle_id == self.agent:
+            self.agents[vehicle_id].connected_to_origin = True
+            self.G.node[str(self.agent)+'_000']['pose'] = [0, 0, 0]
+            self.optimizer.new_graph(str(self.agent)+'_000')
+            os.system("mkdir movie/" + str(self.agent))
 
 
     def add_odometry(self, edge):
@@ -103,6 +106,7 @@ class Backend():
 
         # Prepare this edge for Optimizer
         vehicle_id = int(edge.from_id.split("_")[0])
+
         if self.agents[vehicle_id].connected_to_origin:
             # Guess on pose of this node
             try:
@@ -218,7 +222,7 @@ class Backend():
 
     def initialize_new_loop_closed_agent(self, agent):
         # Initialize all the poses to the beginning of the agent
-        path_to_start_of_agent = nx.shortest_path(self.G, "0_000", str(agent)+"_000")
+        path_to_start_of_agent = nx.shortest_path(self.G, str(self.agent)+"_000", str(agent)+"_000")
 
         for i in range(len(path_to_start_of_agent)):
             node = path_to_start_of_agent[i]
@@ -306,16 +310,16 @@ class Backend():
             plt.figure(i+1)
             plt.clf()
 
-        self.plot_graph(self.G, title="truth", edge_color='g', truth=True, figure_handle=1)
-        self.plot_graph(self.G, title="unoptimized", edge_color='r', figure_handle=2)
-        self.plot_agent(self.G, agent=0, figure_handle=1, color='c', truth=True)
-        self.plot_agent(self.G, agent=0, figure_handle=2, color='c')
+        self.plot_graph(self.G, title=str(self.agent)+"truth", edge_color='g', truth=True, figure_handle=self.agent*10 + 1)
+        self.plot_graph(self.G, title=str(self.agent)+"unoptimized", edge_color='r', figure_handle=self.agent*10 + 2)
+        self.plot_agent(self.G, agent=0, figure_handle=self.agent*10 + 1, color='c', truth=True)
+        self.plot_agent(self.G, agent=0, figure_handle=self.agent*10 + 2, color='c')
 
-        self.plot_agent(self.G, agent=10, figure_handle=1, color='y', truth=True)
-        self.plot_agent(self.G, agent=10, figure_handle=2, color='y')
+        self.plot_agent(self.G, agent=1, figure_handle=self.agent*10 + 1, color='y', truth=True)
+        self.plot_agent(self.G, agent=1, figure_handle=self.agent*10 + 2, color='y')
 
-        self.plot_agent(self.G, agent=20, figure_handle=1, color='m', truth=True)
-        self.plot_agent(self.G, agent=20, figure_handle=2, color='m')
+        self.plot_agent(self.G, agent=2, figure_handle=self.agent*10 + 1, color='m', truth=True)
+        self.plot_agent(self.G, agent=2, figure_handle=self.agent*10 + 2, color='m')
 
         # Create a new graph of optimized values
         optimized_values = self.optimizer.get_optimized()
@@ -335,20 +339,20 @@ class Backend():
             P = [edge[5], 0, 0, 0, edge[6], 0, 0, 0, edge[7]]
             optimized_graph.add_edge(from_id, to_id, transform=transform, covariance=P)
 
-        self.plot_graph(optimized_graph, title="optimized", edge_color='b', figure_handle=3)
-        self.plot_agent(optimized_graph, agent=0, figure_handle=3, color='c')
-        self.plot_agent(optimized_graph, agent=10, figure_handle=3, color='y')
-        self.plot_agent(optimized_graph, agent=20, figure_handle=3, color='m')
+        self.plot_graph(optimized_graph, title=str(self.agent)+"optimized", edge_color='b', figure_handle=self.agent*10 + 3)
+        self.plot_agent(optimized_graph, agent=0, figure_handle=self.agent*10 + 3, color='c')
+        self.plot_agent(optimized_graph, agent=1, figure_handle=self.agent*10 + 3, color='y')
+        self.plot_agent(optimized_graph, agent=2, figure_handle=self.agent*10 + 3, color='m')
         plt.pause(0.005) # delay for painting process
 
 
         # Save frames for future movie making
         plt.figure(1)
-        plt.savefig("movie/truth_" + str(self.frame_number).zfill(4) + ".png")
+        plt.savefig("movie/"+str(self.agent)+"/truth_" + str(self.frame_number).zfill(4) + ".png")
         plt.figure(2)
-        plt.savefig("movie/unoptimized_" + str(self.frame_number).zfill(4) + ".png")
+        plt.savefig("movie/"+str(self.agent)+"/unoptimized_" + str(self.frame_number).zfill(4) + ".png")
         plt.figure(3)
-        plt.savefig("movie/optimized_" + str(self.frame_number).zfill(4) + ".png")
+        plt.savefig("movie/"+str(self.agent)+"/optimized_" + str(self.frame_number).zfill(4) + ".png")
         self.frame_number += 1
         plt.ioff()
 
@@ -449,7 +453,7 @@ class Backend():
 
         # If we are trying to plot estimates, only plot the connected component
         for subcomponent in nx.connected_component_subgraphs(graph):
-            if '0_000' in subcomponent.nodes():
+            if str(self.agent)+'_000' in subcomponent.nodes():
                 graph = subcomponent.copy()
 
         # Get positions of all nodes

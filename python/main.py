@@ -11,18 +11,15 @@ if __name__ == "__main__":
     os.system('rm *.avi')
     os.chdir("..")
     dt = 0.1
-    time = np.arange(0, 180.01, dt)
+    time = np.arange(0, 60.01, dt)
 
     robots = []
     controllers = []
-    num_robots = 100
+    num_robots = 10
     KF_frequency_s = 1.0
     plot_frequency_s = 1.0
 
-    map = Backend("Noisy Map")
-    true_map = Backend("True Map")
-
-    start_pose_range = [8, 8, 2]
+    start_pose_range = [1, 1, 2]
 
     start_poses = [[randint(-start_pose_range[0], start_pose_range[0])*10,
                    randint(-start_pose_range[1], start_pose_range[1])*10,
@@ -36,11 +33,11 @@ if __name__ == "__main__":
 
     controllers = [Controller(start_poses[r]) for r in range(num_robots)]
     robots = [Robot(r, G, start_poses[r]) for r in range(num_robots)]
-    backends = [Backend()]
+    backends = [Backend(r, start_poses[r]) for r in range(num_robots)]
 
     for r in range(num_robots):
-        map.add_agent(r, start_poses[r])
-
+        for a in range(num_robots):
+            backends[r].add_agent(a, start_poses[a])
 
     for t in tqdm(time):
         for r in range(num_robots):
@@ -54,15 +51,20 @@ if __name__ == "__main__":
                 e = Edge(r, str(r) + "_" + str(robots[r].keyframe_id() - 1).zfill(3),
                          str(r) + "_" + str(robots[r].keyframe_id()).zfill(3), G,
                          edge, KF)
-                map.add_odometry( e)
+                # Add odometry to all maps
+                for r in range(num_robots):
+                    backends[r].add_odometry( e)
         if t % plot_frequency_s == 0 and t > 0:
-            map.plot()
+            backends[0].plot()
+            backends[2].plot()
 
-    map.finish_up()
-    map.plot()
+    backends[0].finish_up()
+    backends[0].plot()
+    backends[2].finish_up()
+    backends[2].plot()
 
     print('Making movie - this make take a while')
-    os.chdir('movie')
+    os.chdir('movie/0')
     os.system("mencoder mf://unoptimized*.png -mf w=800:h=600:fps=10:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o unoptimized.avi")
     os.system("mencoder mf://optimized*.png -mf w=800:h=600:fps=10:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o optimized.avi")
     os.system("mencoder mf://truth*.png -mf w=800:h=600:fps=10:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o truth.avi")
