@@ -1,6 +1,7 @@
 import numpy as np
 from math import *
 import matplotlib.pyplot as plt
+from backend import *
 
 class Robot():
     def __init__(self, id, G, start_pose):
@@ -17,9 +18,12 @@ class Robot():
         self.yI = start_pose[1]
         self.psiI = start_pose[2]
 
+        self.start_pose = start_pose
+
         self.edges = []
         self.true_edges = []
         self.keyframes = []
+        self.backend = Backend(id, start_pose)
 
     def propagate_dynamics(self, u, dt):
         noise =np.array([[np.random.normal(0, self.G[0, 0])],

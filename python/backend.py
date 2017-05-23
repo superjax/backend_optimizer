@@ -11,6 +11,7 @@ import subprocess
 import scipy.spatial
 import sys
 import os
+# from robot import *
 import matplotlib.animation as manimation
 
 
@@ -33,10 +34,11 @@ class Edge():
         self.KF = keyframe
 
 class Agent():
-    def __init__(self, id):
-        self.id  = id
+    def __init__(self, robot):
+        self.id  = robot.id
         self.loop_closures = []
         self.connected_to_origin = False
+        self.robot_ptr = robot
 
 class Backend():
     def __init__(self, agent, origin_KF, name="default"):
@@ -79,17 +81,17 @@ class Backend():
         self.current_keyframe_index += 1
 
 
-    def add_agent(self, vehicle_id, KF):
+    def add_agent(self, agent):
         # Tell the backend to keep track of this agent
-        new_agent = Agent(vehicle_id)
-        self.agents[vehicle_id] = new_agent
-        self.G.add_node(str(vehicle_id)+"_000", KF=KF)
+        new_agent = Agent(agent)
+        self.agents[agent.id] = new_agent
+        self.G.add_node(str(agent.id)+"_000", KF=agent.start_pose)
 
         # Add keyframe to the map
-        self.add_keyframe(KF, str(vehicle_id)+"_000")
+        self.add_keyframe(agent.start_pose, str(agent.id)+"_000")
 
-        if vehicle_id == self.agent:
-            self.agents[vehicle_id].connected_to_origin = True
+        if agent.id == self.agent:
+            self.agents[agent.id].connected_to_origin = True
             self.G.node[str(self.agent)+'_000']['pose'] = [0, 0, 0]
             self.optimizer.new_graph(str(self.agent)+'_000')
             os.system("mkdir movie/" + str(self.agent))

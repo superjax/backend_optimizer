@@ -33,11 +33,10 @@ if __name__ == "__main__":
 
     controllers = [Controller(start_poses[r]) for r in range(num_robots)]
     robots = [Robot(r, G, start_poses[r]) for r in range(num_robots)]
-    backends = [Backend(r, start_poses[r]) for r in range(num_robots)]
 
     for r in range(num_robots):
-        for a in range(num_robots):
-            backends[r].add_agent(a, start_poses[a])
+        for agent in robots:
+            robots[r].backend.add_agent(agent)
 
     for t in tqdm(time):
         for r in range(num_robots):
@@ -51,17 +50,20 @@ if __name__ == "__main__":
                 e = Edge(r, str(r) + "_" + str(robots[r].keyframe_id() - 1).zfill(3),
                          str(r) + "_" + str(robots[r].keyframe_id()).zfill(3), G,
                          edge, KF)
-                # Add odometry to all maps
-                for r in range(num_robots):
-                    backends[r].add_odometry( e)
-        if t % plot_frequency_s == 0 and t > 0:
-            backends[0].plot()
-            backends[2].plot()
 
-    backends[0].finish_up()
-    backends[0].plot()
-    backends[2].finish_up()
-    backends[2].plot()
+                # Add odometry to all maps
+                for i in range(num_robots):
+                    robots[i].backend.add_odometry(e)
+
+        # plot maps
+        if t % plot_frequency_s == 0 and t > 0:
+            robots[0].backend.plot()
+            robots[2].backend.plot()
+
+    robots[0].backend.finish_up()
+    robots[0].backend.plot()
+    robots[2].backend.finish_up()
+    robots[2].backend.plot()
 
     print('Making movie - this make take a while')
     os.chdir('movie/0')
