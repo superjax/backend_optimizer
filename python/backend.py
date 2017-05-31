@@ -33,112 +33,98 @@ class Edge():
         self.vehicle_id = vehicle_id
         self.KF = keyframe
 
-class Agent():
-    def __init__(self, robot):
-        self.id  = robot.id
-        self.loop_closures = []
-        self.connected_to_origin = False
-        self.robot_ptr = robot
 
 class Backend():
-    def __init__(self, agent, origin_KF, name="default"):
-        self.name = name
-        self.agent_id = agent
-        self.G = nx.Graph()
+    def __init__(self):
         self.LC_threshold = 0.50
         self.overlap_threshold = 0.75
-        self.node_id_map = dict()
-        self.agents = dict()
-        self.optimized = True
+        self.graphs = dict()
 
-        self.odometry_buffer = []
         self.edge_buffer_for_optimizer = []
         self.lc_buffer_for_optimizer = []
         self.node_buffer_for_optimizer = []
-        self.buffer_size = 0
+
         self.tree = []
-        self.new_keyframes = []
-        self.loop_closure_throttle_counter = 0
-        self.number_of_loop_closed_agents = 0
 
         self.keyframe_index_to_id_map = dict()
         self.keyframe_id_to_index_map = dict()
+        self.new_keyframes = []
         self.keyframes = []
-        self.own_keyframes = []
-        self.all_keyframes = []
         self.current_keyframe_index = 0
-
-        self.optimizer = backend_optimizer.Optimizer()
 
         self.frame_number = 0
 
+        self.special_agent_id = 0
+
+
+    def add_agent(self, agent):
+        # Initialize and keep track of this agent
+        if agent.id in self.graphs:
+            debug = 1
+
+        start_node_id = str(agent.id) + "_000"
+        
+        new_agent = dict()
+        new_agent['graph'] = nx.Graph()
+        new_agent['connected_agents'] = [agent.id]
+        new_agent['node_buffer'] = []
+        new_agent['edge_buffer'] = []
+        new_agent['lc_buffer'] = []
+        new_agent['optimizer'] = backend_optimizer.Optimizer()
+
+        # Add keyframe to the backend
+        self.add_keyframe(agent.start_pose, start_node_id)
+
+        # Best Guess of origin for graph
+        new_agent['graph'].add_node(start_node_id, pose=[0,0,0])
+        new_agent['optimizer'].new_graph(start_node_id)
+
+        self.graphs[agent.id] = new_agent
 
 
     def add_keyframe(self, KF, node_id):
-        vid = int(node_id.split("_")[0])
-        if vid == self.agent_id:
-            self.own_keyframes.append({'node_id': node_id, 'KF': KF})
-        self.all_keyframes.append(KF)
+        self.new_keyframes.append({'KF': KF, 'node_id': node_id})
+        self.keyframes.append(KF)
         self.keyframe_index_to_id_map[self.current_keyframe_index] = node_id
         self.keyframe_id_to_index_map[node_id] = self.current_keyframe_index
         self.current_keyframe_index += 1
 
 
-    def add_agent(self, agent):
-        # Tell the backend to keep track of this agent
-        new_agent = Agent(agent)
-        self.agents[agent.id] = new_agent
-
-        # Add keyframe to the map
-        self.add_keyframe(agent.start_pose, str(agent.id)+"_000")
-
-        if agent.id == self.agent_id:
-            self.G.add_node(str(self.agent_id) + "_000", KF=agent.start_pose)
-            self.agents[agent.id].connected_to_origin = True
-            self.G.node[str(self.agent_id)+'_000']['pose'] = [0, 0, 0]
-            self.optimizer.new_graph(str(self.agent_id)+'_000')
-            os.system("mkdir movie/" + str(self.agent_id))
-
-
     def add_odometry(self, edge):
-        # Add the edge to the networkx Graph
-        # Add Keyframe to the backend
-        self.add_keyframe(edge.KF, edge.to_id)
 
-        # If the from_node is connected to the graph,
-        if edge.from_id in self.G.nodes():
-            self.G.add_edge(edge.from_id, edge.to_id, covariance=edge.covariance, transform=edge.transform,
-                            from_id=edge.from_id, to_id=edge.to_id)
-            self.G.node[edge.to_id]['KF'] = edge.KF
+        # Figure out which graph this odometry goes with
+        keys = self.graphs.keys()
+        added_odom = False
+        for id in keys:
+            if id in self.graphs and edge.vehicle_id in self.graphs[id]['connected_agents']:
+                graph = self.graphs[id]
+                graph['graph'].add_edge(edge.from_id, edge.to_id, covariance=edge.covariance,
+                                        transform=edge.transform, from_id=edge.from_id, to_id=edge.to_id)
+                graph['graph'].node[edge.to_id]['KF'] = edge.KF
 
-            try:
-                # Concatenate to get a best guess for the pose of the node
-                from_pose = self.G.node[edge.from_id]['pose']
-            except KeyError:
-                sys.exit("you tried to concatenate an unconstrained edge")
+                # Add Keyframe to the backend
+                self.add_keyframe(edge.KF, edge.to_id)
 
-            psi0 = from_pose[2]
-            x = from_pose[0] + edge.transform[0] * cos(psi0) - edge.transform[1] * sin(psi0)
-            y = from_pose[1] + edge.transform[0] * sin(psi0) + edge.transform[1] * cos(psi0)
-            psi = psi0 + edge.transform[2]
-            self.G.node[edge.to_id]['pose'] = [x, y, psi]
+                try:
+                    # Concatenate to get a best guess for the pose of the node
+                    from_pose = graph['graph'].node[edge.from_id]['pose']
+                    to_pose = self.concatenate_transform(from_pose, edge.transform)
+                    graph['graph'].node[edge.to_id]['pose'] = to_pose
 
-            # Prepare this edge for the optimizer
-            out_node = [edge.to_id, x, y, psi]
-            out_edge = [edge.from_id, edge.to_id, edge.transform[0], edge.transform[1], edge.transform[2],
-                        edge.covariance[0][0], edge.covariance[1][1], edge.covariance[2][2]]
-            self.node_buffer_for_optimizer.append(out_node)
-            self.edge_buffer_for_optimizer.append(out_edge)
+                    # Prepare this edge for the optimizer
+                    out_node = [edge.to_id, to_pose[0], to_pose[1], to_pose[2]]
+                    out_edge = [edge.from_id, edge.to_id, edge.transform[0], edge.transform[1], edge.transform[2],
+                                edge.covariance[0][0], edge.covariance[1][1], edge.covariance[2][2]]
+                    graph['node_buffer'].append(out_node)
+                    graph['edge_buffer'].append(out_edge)
 
-            # Find Loop Closures
-            self.find_loop_closures()
+                except KeyError:
+                    sys.exit("you tried to concatenate an unconstrained edge")
 
-            # Import new edges from other backends
-            for agent_id in self.agents:
-                self.import_graph_from_agent(agent_id)
+                self.update_gtsam(id)
 
-            # Optimize
-            self.update_gtsam()
+        # Find Loop Closures
+        self.find_loop_closures()
 
     def finish_up(self):
         # Find loop closures on this latest batch
@@ -146,78 +132,40 @@ class Backend():
         # update optimizer
         self.update_gtsam()
 
-    def update_gtsam(self):
-        self.optimizer.add_edge_batch(self.node_buffer_for_optimizer, self.edge_buffer_for_optimizer)
 
-        self.node_buffer_for_optimizer = []
-        self.edge_buffer_for_optimizer = []
-
-
-        self.optimizer.add_lc_batch(self.lc_buffer_for_optimizer)
-
-        self.lc_buffer_for_optimizer = []
-        self.optimizer.optimize()
-        self.optimizer.optimize()
-
-    def import_graph_from_agent(self, agent_id, initializing=False, initial_transform=[0, 0, 0]):
-        agent = self.agents[agent_id]
-        if agent.connected_to_origin and agent_id != self.agent_id:
-            new_nodes = [n for n in agent.robot_ptr.backend.G.nodes() if n not in self.G.nodes()]
-            new_edges = [e for e in agent.robot_ptr.backend.G.edges() if e not in self.G.edges()]
-
-            # Transform these new pose estimates into the correct frame
-
-            # First, find transform between origins
-            if initializing:
-                transform_between_agents = initial_transform
-            else:
-                transform_between_agents = self.G.node[str(agent_id)+"_000"]['pose']
-
-            # Add new nodes to the graph
-            self.G.add_nodes_from(new_nodes)
-            self.G.add_edges_from(new_edges)
-
-            # Apply this transform to all new node pose estimates (edges are relative, so we don't need to do anything to them)
-            for node_id in new_nodes:
-                self.G.node[node]['pose'] = self.concatenate_transform(transform_between_agents, self.G.node[node]['pose'])
-
-
-
-            # Add nodes and edges to the optimizer
-            for node in new_nodes:
-                self.node_buffer_for_optimizer.append([node['id'], node['pose'][0], node['pose'][1], node['pose'][2]])
-            for edge in new_edges:
-                self.edge_buffer_for_optimizer.append([edge['from_node_id'], edge['to_node_id'], edge['transform'][0],
-                                                       edge['transform'][1], edge['transform'][2],
-                                                       edge['covariance'][0][0], edge['covariance'][1][1],
-                                                       edge['covariance'][2][2]])
+    def update_gtsam(self, id):
+        graph = self.graphs[id]
+        graph['optimizer'].add_edge_batch(graph['node_buffer'], graph['edge_buffer'])
+        graph['optimizer'].add_lc_batch(graph['lc_buffer'])
+        graph['lc_buffer'] = []
+        graph['node_buffer'] = []
+        graph['edge_buffer'] = []
+        graph['optimizer'].optimize()
 
 
     def find_loop_closures(self):
-        self.tree = scipy.spatial.KDTree(self.all_keyframes)
-        for keyframe in self.own_keyframes:
+        # Create a new KDTree with all our keyframes
+        self.tree = scipy.spatial.KDTree(self.keyframes)
+
+        # Search for loop closures
+        for keyframe in self.new_keyframes:
             keyframe_pose = keyframe['KF']
             from_node_id = keyframe['node_id']
-            indices = self.tree.query_ball_point(keyframe_pose, self.LC_threshold)
-
-            if len(self.lc_buffer_for_optimizer) > 500:
-                self.update_gtsam()
+            loop_closures = self.tree.query_ball_point(keyframe_pose, self.LC_threshold)
 
             # TODO USE THE CLOSEST NODE, not just the first index
-            for index in indices:
+            for index in loop_closures:
                 to_node_id = self.keyframe_index_to_id_map[index]
 
                 if to_node_id == from_node_id:
                     continue # Don't calculate stupid loop closures
 
+                # Save off vehicle ids
                 to_vehicle_id = int(to_node_id.split("_")[0])
                 from_vehicle_id = int(from_node_id.split("_")[0])
 
                 # Get loop closure edge transform
-                try:
-                    transform = self.find_transform(keyframe_pose, self.all_keyframes[index])
-                except:
-                    debug = 1
+                transform = self.find_transform(keyframe_pose, self.keyframes[index])
 
                 # Add noise to loop closure measurements
                 covariance = [[0.001, 0, 0], [0, 0.001, 0], [0, 0, 0.001]]
@@ -226,37 +174,102 @@ class Backend():
                                   np.random.normal(0, covariance[2][2])])
                 transform = self.concatenate_transform(transform, noise)
 
-                # If only one of the agents have been connected to the origin
-                if not self.agents[to_vehicle_id].connected_to_origin:
-                    self.agents[to_vehicle_id].connected_to_origin = True
-                    other_agent_transform = self.find_transform_to_new_agent(to_vehicle_id, from_node_id, to_node_id, transform)
-                    self.import_graph_from_agent(to_vehicle_id, initializing=True, initial_transform=other_agent_transform)
+                # Figure out which graphs these agents come from
+                from_graph_id = -1
+                to_graph_id = -1
+                for id, graph in self.graphs.iteritems():
+                    if from_vehicle_id in graph['connected_agents']:
+                        from_graph_id = id
+                    if to_vehicle_id in graph['connected_agents']:
+                        to_graph_id = id
 
-                    # Add the edge to the networkx graph
-                    self.G.add_edge(from_node_id, to_node_id, covariance=covariance, transform=transform,
-                                    from_id=from_node_id, to_id=to_node_id)
+                if from_graph_id < 0 or to_graph_id < 0:
+                    debug = 1
 
-                    # Add the edge to the GTSAM optimizer
+                # If these are the same graph, then just add a loop closure
+                if to_graph_id == from_graph_id:
+                    self.graphs[to_graph_id]['graph'].add_edge(from_node_id, to_node_id, covariance=covariance,
+                                                               transform=transform, from_id=from_node_id,
+                                                               to_id=to_node_id)
+                    # Add the loop closure to the GTSAM optimizer
                     opt_edge = [from_node_id, to_node_id, transform[0], transform[1], transform[2],
                                 covariance[0][0], covariance[1][1], covariance[2][2]]
-                    self.lc_buffer_for_optimizer.append(opt_edge)
-                    # Run the optimizer (adding a new agent usually means we just added a ton of stuff to the graph)
-                    self.update_gtsam()
-                    break
+                    self.graphs[to_graph_id]['lc_buffer'].append(opt_edge)
 
-                # If both agents are already connected to the origin
-                elif self.agents[to_vehicle_id].connected_to_origin and self.agents[from_vehicle_id].connected_to_origin:
-                    # Add the edge to the networkx graph
-                    self.G.add_edge(from_node_id, to_node_id, covariance=covariance, transform=transform,
-                                    from_id=from_node_id, to_id=to_node_id)
-
-                    # Add the edge to the GTSAM optimizer
-                    opt_edge = [from_node_id, to_node_id, transform[0], transform[1], transform[2],
-                                covariance[0][0], covariance[1][1], covariance[2][2]]
-                    self.lc_buffer_for_optimizer.append(opt_edge)
-                    break
+                # otherwise we need to merge these two graphs
                 else:
-                    print("problem")
+                    # Figure out which graph to keep
+                    if abs(to_graph_id - self.special_agent_id) > abs(from_graph_id - self.special_agent_id):
+                        graph1 = from_graph_id
+                        graph2 = to_graph_id
+                    else:
+                        graph2 = to_graph_id
+                        graph1 = from_graph_id
+
+                    # Merge graph2 into graph1
+                    self.merge_graphs(self.graphs[graph1], self.graphs[graph2], to_node_id, from_node_id, transform,
+                                      covariance)
+
+                    # Now that we have merged the graphs, we can get rid of graph2
+                    del self.graphs[graph2]
+                    print "deleting graph ", graph2
+
+                break # Go on to the next keyframe
+
+
+    # this function merges graph1 into graph2
+    def merge_graphs(self, graph1, graph2, to_node_id, from_node_id, transform, covariance):
+        # Figure out the transform between graph origins
+        transform_between_graphs = []
+        if from_node_id in graph1['graph'].node:
+            try:
+                transform_to_lc_node = self.concatenate_transform(graph1['graph'].node[from_node_id]['pose'], transform)
+                transform_between_graphs = self.concatenate_transform(transform_to_lc_node,
+                                                                  self.invert_transform(
+                                                                      graph2['graph'].node[to_node_id]['pose']))
+            except:
+                debug =1
+        else:
+            # loop closure was "backwards"
+            transform_to_lc_node = self.concatenate_transform(graph1['graph'].node[to_node_id]['pose'],
+                                                              self.invert_transform(transform))
+            transform_between_graphs = self.concatenate_transform(transform_to_lc_node,
+                                                                  self.invert_transform(
+                                                                      graph2['graph'].node[from_node_id]['pose']))
+
+        # Make a list of new nodes
+        new_nodes = [n for n in graph2['graph'].nodes() if n not in graph1['graph'].nodes()]
+        new_edges = [e for e in graph2['graph'].edges() if e not in graph1['graph'].edges()]
+
+        # Copy nodes to graph1
+        graph1['graph'].add_nodes_from(new_nodes)
+        graph1['graph'].add_edges_from(new_edges)
+
+        # Merge the list of connected agents
+        graph1['connected_agents'].extend(graph2['connected_agents'])
+
+        # Transform new nodes to the right coordinate frame, and add them to the optimizer
+        for node_id in new_nodes:
+            try:
+                pose = self.concatenate_transform(transform_between_graphs, graph2['graph'].node[node_id]['pose'])
+                graph1['graph'].node[node_id]['pose'] = pose
+                graph1['node_buffer'].append([node_id, pose[0], pose[1], pose[2]])
+            except:
+                debug = 1
+
+        # Add the new edges to the optimizer
+        for edge in new_edges:
+            debug = 1
+
+        # Add the loop closure to the graph and optimizer
+        graph1['graph'].add_edge(from_node_id, to_node_id, covariance=covariance, transform=transform,
+                                 from_id=from_node_id, to_id=to_node_id)
+        graph1['lc_buffer'].append([from_node_id, to_node_id, transform[0], transform[1], transform[2], covariance[0][0],
+                                    covariance[1][1], covariance[2][2]])
+
+        for node in graph1['graph'].nodes():
+            if 'pose' not in graph1['graph'].node[node]:
+                problem = 1
 
     # The goal of this function is to calculate the best guess of a transform between myself and this new agent
     def find_transform_to_new_agent(self, agent, from_node, to_node, lc_transform):
@@ -281,7 +294,7 @@ class Backend():
         return [dx, dy, psi]
 
     def plot(self):
-        self.update_gtsam()
+        self.update_gtsam(self.special_agent_id)
 
         plt.ion()
         for i in range(3):
@@ -502,6 +515,7 @@ class Backend():
             plt.figure()
 
         plt.plot(y, x, color=color, lw=4)
+
 
 
 

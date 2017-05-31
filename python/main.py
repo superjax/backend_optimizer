@@ -34,9 +34,10 @@ if __name__ == "__main__":
     controllers = [Controller(start_poses[r]) for r in range(num_robots)]
     robots = [Robot(r, G, start_poses[r]) for r in range(num_robots)]
 
-    for r in range(num_robots):
-        for agent in robots:
-            robots[r].backend.add_agent(agent)
+    backend = Backend()
+
+    for r in robots:
+        backend.add_agent(r)
 
     for t in tqdm(time):
         for r in range(num_robots):
@@ -52,18 +53,14 @@ if __name__ == "__main__":
                          edge, KF)
 
                 # Add odometry to all maps
-                for i in range(num_robots):
-                    robots[i].backend.add_odometry(e)
+                backend.add_odometry(e)
 
         # plot maps
-        if t % plot_frequency_s == 0 and t > 0:
-            robots[0].backend.plot()
-            robots[2].backend.plot()
+        # if t % plot_frequency_s == 0 and t > 0:
+            # backend.plot()
 
-    robots[0].backend.finish_up()
-    robots[0].backend.plot()
-    robots[2].backend.finish_up()
-    robots[2].backend.plot()
+    backend.finish_up()
+    # backend.plot()
 
     print('Making movie - this make take a while')
     os.chdir('movie/0')

@@ -23,7 +23,6 @@ class Robot():
         self.edges = []
         self.true_edges = []
         self.keyframes = []
-        self.backend = Backend(id, start_pose)
 
     def propagate_dynamics(self, u, dt):
         noise =np.array([[np.random.normal(0, self.G[0, 0])],
