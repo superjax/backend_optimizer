@@ -15,9 +15,9 @@ if __name__ == "__main__":
 
     robots = []
     controllers = []
-    num_robots = 10
+    num_robots = 4
     KF_frequency_s = 1.0
-    plot_frequency_s = 1.0
+    plot_frequency_s = 5
 
     start_pose_range = [1, 1, 2]
 
@@ -25,6 +25,10 @@ if __name__ == "__main__":
                    randint(-start_pose_range[1], start_pose_range[1])*10,
                    randint(-start_pose_range[2], start_pose_range[2])*pi/2] for r in range(num_robots)]
     start_poses[0] = [0, 0, 0]
+    start_poses[1] = [10, 0, pi/2]
+    start_poses[2] = [10, 10, pi]
+    start_poses[3] = [0, 10, 3*pi/2]
+
     # start_poses[1] = [10, 0, pi/2]
 
     P_perfect = np.array([[0.00001, 0, 0], [0, 0.00001, 0], [0, 0, 0.00001]])
@@ -56,8 +60,8 @@ if __name__ == "__main__":
                 backend.add_odometry(e)
 
         # plot maps
-        # if t % plot_frequency_s == 0 and t > 0:
-            # backend.plot()
+        if t % plot_frequency_s == 0 and t > 0:
+            backend.plot()
 
     backend.finish_up()
     # backend.plot()

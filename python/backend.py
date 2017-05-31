@@ -36,8 +36,7 @@ class Edge():
 
 class Backend():
     def __init__(self):
-        self.LC_threshold = 0.50
-        self.overlap_threshold = 0.75
+        self.LC_threshold = 0.9
         self.graphs = dict()
 
         self.edge_buffer_for_optimizer = []
@@ -76,7 +75,7 @@ class Backend():
         self.add_keyframe(agent.start_pose, start_node_id)
 
         # Best Guess of origin for graph
-        new_agent['graph'].add_node(start_node_id, pose=[0,0,0])
+        new_agent['graph'].add_node(start_node_id, pose=[0,0,0], KF=agent.start_pose)
         new_agent['optimizer'].new_graph(start_node_id)
 
         self.graphs[agent.id] = new_agent
@@ -142,6 +141,11 @@ class Backend():
         graph['edge_buffer'] = []
         graph['optimizer'].optimize()
 
+        optimized_values = graph['optimizer'].get_optimized()
+        for node in optimized_values["nodes"]:
+            node_id = node[0]
+            graph['graph'].node[node_id]['pose']=[node[1], node[2], node[3]]
+
 
     def find_loop_closures(self):
         # Create a new KDTree with all our keyframes
@@ -199,12 +203,14 @@ class Backend():
                 # otherwise we need to merge these two graphs
                 else:
                     # Figure out which graph to keep
-                    if abs(to_graph_id - self.special_agent_id) > abs(from_graph_id - self.special_agent_id):
-                        graph1 = from_graph_id
-                        graph2 = to_graph_id
+                    if to_graph_id < from_graph_id:
+                        graph1 = to_graph_id
+                        graph2 = from_graph_id
                     else:
-                        graph2 = to_graph_id
                         graph1 = from_graph_id
+                        graph2 = to_graph_id
+
+                    self.plot()
 
                     # Merge graph2 into graph1
                     self.merge_graphs(self.graphs[graph1], self.graphs[graph2], to_node_id, from_node_id, transform,
@@ -213,6 +219,9 @@ class Backend():
                     # Now that we have merged the graphs, we can get rid of graph2
                     del self.graphs[graph2]
                     print "deleting graph ", graph2
+
+                    self.plot()
+                    debug = 1
 
                 break # Go on to the next keyframe
 
@@ -253,13 +262,22 @@ class Backend():
             try:
                 pose = self.concatenate_transform(transform_between_graphs, graph2['graph'].node[node_id]['pose'])
                 graph1['graph'].node[node_id]['pose'] = pose
+                graph1['graph'].node[node_id]['KF'] = graph2['graph'].node[node_id]['KF']
                 graph1['node_buffer'].append([node_id, pose[0], pose[1], pose[2]])
             except:
                 debug = 1
 
         # Add the new edges to the optimizer
         for edge in new_edges:
-            debug = 1
+            edge_map = graph2['graph'].edge[edge[0]][edge[1]]
+            graph1['graph'].edge[edge[0]][edge[1]] = edge_map
+            try:
+                graph1['edge_buffer'].append([edge_map['from_id'], edge_map['to_id'], edge_map['transform'][0],
+                                         edge_map['transform'][1], edge_map['transform'][2],
+                                         edge_map['covariance'][0][0], edge_map['covariance'][1][1],
+                                         edge_map['covariance'][2][2]])
+            except:
+                debug = 1
 
         # Add the loop closure to the graph and optimizer
         graph1['graph'].add_edge(from_node_id, to_node_id, covariance=covariance, transform=transform,
@@ -288,62 +306,42 @@ class Backend():
         return [x, y, psi]
 
     def invert_transform(self, T):
-        dx = -T[0]*cos(T[2]) + T[1]*sin(T[2])
-        dy = -T[0]*sin(T[2]) - T[1]*cos(T[2])
+        dx = -(   T[0]*cos(T[2]) + T[1]*sin(T[2]))
+        dy = -( - T[0]*sin(T[2]) + T[1]*cos(T[2]))
         psi = -T[2]
         return [dx, dy, psi]
 
     def plot(self):
-        self.update_gtsam(self.special_agent_id)
+        num_subplots = len(self.graphs)
 
+        rows = int(ceil(num_subplots/num_subplots**0.5))
+        cols = int(ceil(num_subplots/float(rows)))
+
+        # Prepare figures
         plt.ion()
-        for i in range(3):
+        for i in range(2):
             plt.figure(i+1)
             plt.clf()
 
-        self.plot_graph(self.G, title=str(self.agent_id)+"truth", edge_color='g', truth=True, figure_handle=self.agent_id*10 + 1)
-        self.plot_graph(self.G, title=str(self.agent_id)+"unoptimized", edge_color='r', figure_handle=self.agent_id*10 + 2)
-        self.plot_agent(self.G, agent=0, figure_handle=self.agent_id*10 + 1, color='c', truth=True)
-        self.plot_agent(self.G, agent=0, figure_handle=self.agent_id*10 + 2, color='c')
+        i = 0
+        names = [' truth', ' optimized']
+        truth = [1, 0]
+        for id, graph in self.graphs.iteritems():
+            i += 1
 
-        self.plot_agent(self.G, agent=1, figure_handle=self.agent_id*10 + 1, color='y', truth=True)
-        self.plot_agent(self.G, agent=1, figure_handle=self.agent_id*10 + 2, color='y')
-
-        self.plot_agent(self.G, agent=2, figure_handle=self.agent_id*10 + 1, color='m', truth=True)
-        self.plot_agent(self.G, agent=2, figure_handle=self.agent_id*10 + 2, color='m')
-
-        # Create a new graph of optimized values
-        optimized_values = self.optimizer.get_optimized()
-        optimized_graph = nx.Graph()
-        for node in optimized_values["nodes"]:
-            node_id = node[0]
-            optimized_graph.add_node(node_id,
-                                     pose=[node[1], node[2], node[3]],
-                                     vehicle_id=node_id.split("_")[0],
-                                     KF=self.G.node[node_id]['KF'])
-
-        for edge in optimized_values["edges"]:
-            from_id = edge[0]
-            to_id = edge[1]
-            transform = [edge[2], edge[3], edge[4]]
-            # Total guess about covariance for optimized edges
-            P = [edge[5], 0, 0, 0, edge[6], 0, 0, 0, edge[7]]
-            optimized_graph.add_edge(from_id, to_id, transform=transform, covariance=P)
-
-        self.plot_graph(optimized_graph, title=str(self.agent_id)+"optimized", edge_color='b', figure_handle=self.agent_id*10 + 3)
-        self.plot_agent(optimized_graph, agent=0, figure_handle=self.agent_id*10 + 3, color='c')
-        self.plot_agent(optimized_graph, agent=1, figure_handle=self.agent_id*10 + 3, color='y')
-        self.plot_agent(optimized_graph, agent=2, figure_handle=self.agent_id*10 + 3, color='m')
+            for j in range(2):
+                plt.figure(j+1)
+                ax = plt.subplot(rows, cols, i)
+                self.plot_graph(graph['graph'], title=str(id) + names[j], edge_color='g', truth=truth[j],
+                                axis_handle=ax)
         plt.pause(0.005) # delay for painting process
 
 
         # Save frames for future movie making
         plt.figure(1)
-        plt.savefig("movie/"+str(self.agent_id)+"/truth_" + str(self.frame_number).zfill(4) + ".png")
+        plt.savefig("movie/truth_" + str(self.frame_number).zfill(4) + ".png")
         plt.figure(2)
-        plt.savefig("movie/"+str(self.agent_id)+"/unoptimized_" + str(self.frame_number).zfill(4) + ".png")
-        plt.figure(3)
-        plt.savefig("movie/"+str(self.agent_id)+"/optimized_" + str(self.frame_number).zfill(4) + ".png")
+        plt.savefig("movie/optimized_" + str(self.frame_number).zfill(4) + ".png")
         self.frame_number += 1
         plt.ioff()
 
@@ -365,87 +363,13 @@ class Backend():
         # Pack up and output the loop closure
         return [dx[0], dx[1], dpsi]
 
-    def find_pose(self, graph, node, origin_node):
-        if 'pose' in graph.node[node]:
-            return graph.node[node]['pose']
-        else:
-            path_to_origin = nx.shortest_path(graph, node, origin_node)
-            edge = graph.edge[node][path_to_origin[1]]
-            # find the pose of the next closest node (this is recursive)
-            nearest_known_pose = self.find_pose(graph, path_to_origin[1], origin_node)
-
-            # edges could be going in either direction
-            # if the edge is pointing to this node
-            if edge['from_id'] == path_to_origin[1]:
-                psi0 = nearest_known_pose[2]
-                x = nearest_known_pose[0] + edge['transform'][0] * cos(psi0) - edge['transform'][1] * sin(psi0)
-                y = nearest_known_pose[1] + edge['transform'][0] * sin(psi0) + edge['transform'][1] * cos(psi0)
-                psi = psi0 + edge['transform'][2]
-            else:
-                psi = nearest_known_pose[2] - edge['transform'][2]
-                x = nearest_known_pose[0] - edge['transform'][0] * cos(psi) + edge['transform'][1] * sin(psi)
-                y = nearest_known_pose[1] - edge['transform'][0] * sin(psi) - edge['transform'][1] * cos(psi)
-
-            graph.node[node]['pose'] = [x, y, psi]
-
-            return [x, y, psi]
-
-    def seed_graph(self, graph, node):
-        children = [node]
-        more_children = True
-        depth = 0
-
-        while more_children:
-            depth += 1
-            more_children = False
-            next_iteration_children = []
-            for child in children:
-                this_child_children, this_node_has_more_children = self.get_children_pose(graph, child)
-                if this_node_has_more_children:
-                    more_children = True
-                    next_iteration_children.extend(this_child_children)
-
-            children = next_iteration_children
-        print("network depth = %d", depth)
-
-
-    def get_children_pose(self, graph, node):
-        more_children = False
-        children = []
-        for child in graph.neighbors(node):
-            if 'pose' not in graph.node[child]:
-                more_children = True
-                children.append(child)
-                edge = graph.edge[node][child]
-
-                if edge['from_id'] == node: # edge is pointing from node to child
-                    psi0 = graph.node[node]['pose'][2]
-                    x = graph.node[node]['pose'][0] + edge['transform'][0] * cos(psi0) - edge['transform'][1] * sin(psi0)
-                    y = graph.node[node]['pose'][1] + edge['transform'][0] * sin(psi0) + edge['transform'][1] * cos(psi0)
-                    psi = psi0 + edge['transform'][2]
-                else: # edge is pointing from child to node
-                    psi = graph.node[node]['pose'][2] - edge['transform'][2]
-                    x = graph.node[node]['pose'][0] - edge['transform'][0] * cos(psi) + edge['transform'][1] * sin(psi)
-                    y = graph.node[node]['pose'][1] - edge['transform'][0] * sin(psi) - edge['transform'][1] * cos(psi)
-
-                graph.node[child]['pose'] = [x, y, psi]
-        return children, more_children
-
-
-    def plot_graph(self, graph, title='default', name='default', arrows=False, figure_handle=0, edge_color='m',
+    def plot_graph(self, graph, title='default', name='default', arrows=False, axis_handle=-1, edge_color='m',
                    truth=False, plot_lc=False):
-        if figure_handle:
-            plt.figure(figure_handle)
-        else:
+        if axis_handle < 0:
             plt.figure()
             plt.clf()
+            axis_handle = plt.subplot(111)
         plt.title(title)
-        ax = plt.subplot(111)
-
-        # If we are trying to plot estimates, only plot the connected component
-        for subcomponent in nx.connected_component_subgraphs(graph):
-            if str(self.agent_id)+'_000' in subcomponent.nodes():
-                graph = subcomponent.copy()
 
         # Get positions of all nodes
         plot_positions = dict()
@@ -458,6 +382,8 @@ class Backend():
                 except:
                     debug = 1
 
+        plot_graph = graph.copy()
+
         # Remove Loop Closures
         if not plot_lc:
             for pair in graph.edges():
@@ -466,10 +392,10 @@ class Backend():
                 vID_i = int(i.split("_")[0])
                 vID_j = int(j.split("_")[0])
                 if vID_i != vID_j:
-                    graph.remove_edge(i, j)
+                    plot_graph.remove_edge(i, j)
 
-        nx.draw_networkx(graph, pos=plot_positions,
-                         with_labels=False, ax=ax, edge_color=edge_color,
+        nx.draw_networkx(plot_graph, pos=plot_positions,
+                         with_labels=False, ax=axis_handle, edge_color=edge_color,
                          linewidths="0.3", node_color='c', node_shape='')
         if arrows:
             for i, n in graph.node.iteritems():
@@ -481,17 +407,11 @@ class Backend():
                 dx = arrow_length * cos(pose[2])
                 dy = arrow_length * sin(pose[2])
                 # Be sure to convert to NWU for plotting
-                ax.arrow(pose[1], pose[0], dy, dx, head_width=arrow_length*0.15, head_length=arrow_length*0.3, fc='c', ec='b')
-
-        # # Plot loop closures
-        # for lc in self.lc_edges:
-        #     x = [lc[0][0], lc[1][0]]
-        #     y = [lc[0][1], lc[1][1]]
-        #     self.ax.plot(y, x , lc_color, lw='0.1', zorder=1)
+                axis_handle.arrow(pose[1], pose[0], dy, dx, head_width=arrow_length*0.15, head_length=arrow_length*0.3, fc='c', ec='b')
 
         plt.axis("equal")
 
-    def plot_agent(self,graph, agent, figure_handle=0, color='c', truth=False):
+    def plot_agent(self,graph, agent, axis_handle=-1, color='c', truth=False):
         nodes = sorted(graph.node)
         agent_nodes = []
         x = []
@@ -509,12 +429,13 @@ class Backend():
                         break
 
 
-        if figure_handle:
-            plt.figure(figure_handle)
-        else:
+        if axis_handle < 0:
             plt.figure()
+            plt.plot(y, x, color=color, lw=4)
+        else:
+            axis_handle.plot(y, x, color=color, lw=4)
 
-        plt.plot(y, x, color=color, lw=4)
+
 
 
 
