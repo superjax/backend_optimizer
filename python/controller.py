@@ -33,6 +33,7 @@ class Controller:
                 next_waypoint = [0, -self.grid_size, -pi/2]
             else: # Right
                 next_waypoint = [0, self.grid_size, pi/2]
+
             psi0 = self.waypoint[2, 0]
             R = np.array([[cos(psi0), -sin(psi0), 0],
                           [sin(psi0), cos(psi0), 0],

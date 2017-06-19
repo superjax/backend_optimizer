@@ -32,7 +32,7 @@ public:
 
     BackendOptimizer();
     py::list cumsum(py::list list_to_sum);
-    int new_graph(std::string fixed_node);
+    int new_graph(std::string fixed_node, int id);
     double add_edge_batch(py::list nodes, py::list edges);
     double add_lc_batch(py::list edges);
     void add_edge(py::list node, py::list edge);
@@ -51,6 +51,7 @@ private:
 
     uint64_t num_nodes_;
     uint64_t num_edges_;
+    uint64_t agent_id_;
 
     std::map<std::string, uint64_t> node_name_to_id_map_;
     std::map<uint64_t, std::string> node_id_to_name_map_;

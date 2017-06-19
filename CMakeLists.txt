@@ -4,7 +4,9 @@ project(backend_optimizer)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  cmake_modules
 )
+find_package(Eigen REQUIRED)
 
 SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=gnu++11 ${OpenMP_CXX_FLAGS} -O3")
 
@@ -46,6 +48,12 @@ set_target_properties(backend_optimizer PROPERTIES
         PREFIX ""
         LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}
 )
+
+set_target_properties(kdtree PROPERTIES
+        PREFIX ""
+        LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}
+)
+
 
 # Put an __init__.py file in the package location so it can be imported
 file(WRITE ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/__init__.py "")
