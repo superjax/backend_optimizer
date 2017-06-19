@@ -15,11 +15,11 @@ if __name__ == "__main__":
 
     robots = []
     controllers = []
-    num_robots = 10
+    num_robots = 50
     KF_frequency_s = 1.0
     plot_frequency_s = 5
 
-    start_pose_range = [1, 0, 2]
+    start_pose_range = [2, 2, 2]
 
     start_poses = [[randint(-start_pose_range[0], start_pose_range[0])*10,
                    randint(-start_pose_range[1], start_pose_range[1])*10,
@@ -60,7 +60,7 @@ if __name__ == "__main__":
                 backend.add_odometry(e)
 
         # plot maps
-        if t % plot_frequency_s == 0 and t > 0:
+        # if t % plot_frequency_s == 0 and t > 0:
             backend.plot()
 
     backend.finish_up()

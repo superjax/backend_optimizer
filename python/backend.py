@@ -64,6 +64,7 @@ class Backend():
                 'weight': 'normal',
                 'size': 8}
 
+        matplotlib.use('GTKAgg')
         matplotlib.rc('font', **font)
 
 
@@ -123,14 +124,14 @@ class Backend():
                 graph['edge_buffer'].append(out_edge)
                 self.update_gtsam(id)
 
-                for e in graph['graph'].edges():
-                    if 'from_id' not in graph['graph'].edge[e[0]][e[1]]:
-                        debug = 1
+                # for e in graph['graph'].edges():
+                #     if 'from_id' not in graph['graph'].edge[e[0]][e[1]]:
+                #         debug = 1
 
 
         # Find Loop Closures
-        if count > 1:
-            debug = 1
+        # if count > 1:
+        #     debug = 1
         if len(self.new_keyframes) > 1:
             self.find_loop_closures()
 
@@ -144,8 +145,8 @@ class Backend():
 
     def update_gtsam(self, id):
         graph = self.graphs[id]
-        if not nx.is_connected(graph['graph']):
-            problem = 1
+        # if not nx.is_connected(graph['graph']):
+        #     print "something went wrong - error 1"
         try:
             # graph['optimizer'].add_lc_batch(graph['lc_buffer'])
             graph['optimizer'].add_edge_batch(graph['node_buffer'], graph['edge_buffer'])
@@ -154,8 +155,7 @@ class Backend():
             graph['edge_buffer'] = []
             graph['optimizer'].optimize()
         except:
-            debug = 1
-
+            print "something went wrong - error 2"
         optimized_values = graph['optimizer'].get_optimized()
         for node in optimized_values["nodes"]:
             node_id = node[0]
@@ -204,7 +204,7 @@ class Backend():
                         to_graph_id = id
 
                 if from_graph_id < 0 or to_graph_id < 0:
-                    debug = 1
+                    print "error code 3"
 
                 # If these are the same graph, then just add a loop closure
                 if to_graph_id == from_graph_id:
@@ -233,7 +233,7 @@ class Backend():
                                       covariance)
 
                     # self.plot()
-                    debug = 1
+                    # debug = 1
                     self.update_gtsam(graph1)
                     # self.plot()
                     # debug = 2
@@ -303,7 +303,7 @@ class Backend():
                                      edge_map['covariance'][0][0], edge_map['covariance'][1][1],
                                      edge_map['covariance'][2][2]])
             except:
-                debug = 1
+                print "error 5"
 
 
     def concatenate_transform(self, T1, T2):
@@ -396,7 +396,7 @@ class Backend():
                 try:
                     plot_positions[i] = [n['pose'][1], n['pose'][0]]
                 except:
-                    debug = 1
+                    print "error 6"
 
         plot_graph = graph.copy()
 
