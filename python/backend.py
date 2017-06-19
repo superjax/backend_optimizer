@@ -332,7 +332,7 @@ class Backend():
 
         # Plot the combined graph
         for i in range(2):
-            plt.figure(i)
+            plt.figure(i+1)
             ax = plt.subplot(rows, cols,  1)
             combined_graph = nx.Graph()
             for id, graph in self.graphs.iteritems():

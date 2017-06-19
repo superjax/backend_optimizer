@@ -19,7 +19,7 @@ if __name__ == "__main__":
     KF_frequency_s = 1.0
     plot_frequency_s = 2
 
-    start_pose_range = [4, 4, 2]
+    start_pose_range = [6, 6, 2]
 
     start_poses = [[randint(-start_pose_range[0], start_pose_range[0])*10,
                    randint(-start_pose_range[1], start_pose_range[1])*10,
