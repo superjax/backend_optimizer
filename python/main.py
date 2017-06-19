@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
         # plot maps
         # if t % plot_frequency_s == 0 and t > 0:
-            backend.plot()
+        backend.plot()
 
     backend.finish_up()
     # backend.plot()
