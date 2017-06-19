@@ -331,13 +331,14 @@ class Backend():
             plt.clf()
 
         # Plot the combined graph
-        plt.figure(1)
-        ax = plt.subplot(rows, cols,  1)
-        combined_graph = nx.Graph()
-        for id, graph in self.graphs.iteritems():
-            combined_graph = nx.compose(combined_graph, graph['graph'])
-        self.plot_graph(combined_graph, title='full truth', edge_color='g', truth=1,
-                        axis_handle=ax)
+        for i in range(2):
+            plt.figure(i)
+            ax = plt.subplot(rows, cols,  1)
+            combined_graph = nx.Graph()
+            for id, graph in self.graphs.iteritems():
+                combined_graph = nx.compose(combined_graph, graph['graph'])
+            self.plot_graph(combined_graph, title='full truth', edge_color='r', truth=1,
+                            axis_handle=ax)
 
         i = 1
         names = [' truth', ' optimized']
