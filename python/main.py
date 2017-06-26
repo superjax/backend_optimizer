@@ -11,15 +11,15 @@ if __name__ == "__main__":
     os.system('rm *.avi')
     os.chdir("..")
     dt = 0.1
-    time = np.arange(0, 360.01, dt)
+    time = np.arange(0, 600.01, dt)
 
     robots = []
     controllers = []
-    num_robots = 50
+    num_robots = 1000
     KF_frequency_s = 1.0
     plot_frequency_s = 2
 
-    start_pose_range = [6, 6, 2]
+    start_pose_range = [50, 50, 2]
 
     start_poses = [[randint(-start_pose_range[0], start_pose_range[0])*10,
                    randint(-start_pose_range[1], start_pose_range[1])*10,

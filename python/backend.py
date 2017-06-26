@@ -13,8 +13,10 @@ import subprocess
 import scipy.spatial
 import sys
 import os
+import pickle
 # from robot import *
 import matplotlib.animation as manimation
+from operator import itemgetter
 
 
 class Node():
@@ -58,6 +60,11 @@ class Backend():
         self.special_agent_id = 0
 
         self.keyframe_matcher = kdtree.KDTree()
+
+        self.average_optimization_time_count = 0
+        self.average_optimization_time_sum = 0
+        self.max_optimization_time = 0
+        self.optimization_time_array = []
 
         # Initialize Plot sizing
         font = {'family': 'normal',
@@ -149,11 +156,12 @@ class Backend():
         #     print "something went wrong - error 1"
         try:
             # graph['optimizer'].add_lc_batch(graph['lc_buffer'])
-            graph['optimizer'].add_edge_batch(graph['node_buffer'], graph['edge_buffer'])
+            self.optimization_time_array.append(graph['optimizer'].add_edge_batch(graph['node_buffer'], graph['edge_buffer']))
             # graph['lc_buffer'] = []
             graph['node_buffer'] = []
             graph['edge_buffer'] = []
-            graph['optimizer'].optimize()
+            self.optimization_time_array.append(graph['optimizer'].optimize())
+
         except:
             print "something went wrong - error 2"
         optimized_values = graph['optimizer'].get_optimized()
@@ -320,6 +328,8 @@ class Backend():
 
     def plot(self):
         num_subplots = len(self.graphs) + 1
+        if num_subplots > 25:
+          num_subplots = 25
 
         rows = int(ceil(num_subplots/num_subplots**0.5))
         cols = int(ceil(num_subplots/float(rows)))
@@ -343,14 +353,18 @@ class Backend():
         i = 1
         names = [' truth', ' optimized']
         truth = [1, 0]
-        for id, graph in self.graphs.iteritems():
-            i += 1
 
+        num_connected_agents = [[id, len(graph['connected_agents'])] for id, graph in self.graphs.iteritems()]
+        num_connected_agents = sorted(num_connected_agents, key=itemgetter(1), reverse=True)
+        num_connected_agents = [x[0][0] for x in zip(num_connected_agents)]
+
+        for i in range(num_subplots-1):
+            agent = num_connected_agents[i]
             for j in range(2):
                 plt.figure(j+1)
-                ax = plt.subplot(rows, cols, i)
-                self.plot_graph(graph['graph'], title=str(id) + names[j], edge_color='g', truth=truth[j],
-                                axis_handle=ax)
+                ax = plt.subplot(rows, cols, i+1)
+                self.plot_graph(self.graphs[agent]['graph'], title=str(agent) + names[j], edge_color='g', truth=truth[j],
+                              axis_handle=ax)
         plt.pause(0.005) # delay for painting process
 
 
@@ -361,6 +375,9 @@ class Backend():
         plt.savefig("movie/optimized_" + str(self.frame_number).zfill(4) + ".png")
         self.frame_number += 1
         plt.ioff()
+
+        # also pickle up the optimization_time array
+        pickle.dump(self.optimization_time_array, open('time_array', 'wb'))
 
 
     def find_transform(self, from_pose, to_pose):
