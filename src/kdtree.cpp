@@ -63,7 +63,7 @@ py::list KDTree::find_closest_point(pybind11::list point, double distance)
 //    double x = points_mat(ret_indexes[i], 0);
 //    double y = points_mat(ret_indexes[i], 1);
 //    double z = points_mat(ret_indexes[i], 2);
-////    std::cout << "result[" << i << "]=" << ret_indexes[i] << ":" << node_id_to_name_map_[ret_indexes[i]] << " -> " << x << ", " << y << ", " << z << " dist = " << distances[i] << "\n";
+//    std::cout << "result[" << i << "]=" << ret_indexes[i] << ":" << node_id_to_name_map_[ret_indexes[i]] << " -> " << x << ", " << y << ", " << z << " dist = " << distances[i] << "\n";
 //  }
 
   std::string closest_id = "none";
