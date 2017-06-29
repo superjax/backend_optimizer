@@ -7,15 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 from math import *
 import numpy as np
-import regex
-from tqdm import tqdm
-import subprocess
-import scipy.spatial
-import sys
-import os
 import pickle
-# from robot import *
-import matplotlib.animation as manimation
 from operator import itemgetter
 
 
@@ -394,7 +386,7 @@ class Backend():
         plt.ioff()
 
         # also pickle up the optimization_time array
-        # pickle.dump(self.optimization_time_array, open('time_array.pkl', 'wb'))
+        pickle.dump(self.optimization_time_array, open('time_array.pkl', 'wb'))
 
 
     def find_transform(self, from_pose, to_pose):
