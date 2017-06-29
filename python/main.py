@@ -15,11 +15,11 @@ if __name__ == "__main__":
 
     robots = []
     controllers = []
-    num_robots = 1000
+    num_robots = 100
     KF_frequency_s = 1.0
     plot_frequency_s = 2
 
-    start_pose_range = [50, 50, 2]
+    start_pose_range = [25, 25, 2]
 
     start_poses = [[randint(-start_pose_range[0], start_pose_range[0])*10,
                    randint(-start_pose_range[1], start_pose_range[1])*10,

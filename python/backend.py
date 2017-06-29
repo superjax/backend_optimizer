@@ -61,6 +61,9 @@ class Backend():
 
         self.keyframe_matcher = kdtree.KDTree()
 
+        self.optimization_counter = 0
+        self.num_agents = 0
+
         self.average_optimization_time_count = 0
         self.average_optimization_time_sum = 0
         self.max_optimization_time = 0
@@ -74,12 +77,11 @@ class Backend():
         matplotlib.use('GTKAgg')
         matplotlib.rc('font', **font)
 
+        self.init_plots(25)
+
 
     def add_agent(self, agent):
         # Initialize and keep track of this agent
-        if agent.id in self.graphs:
-            debug = 1
-
         start_node_id = str(agent.id) + "_000"
         
         new_agent = dict()
@@ -97,6 +99,8 @@ class Backend():
         new_agent['optimizer'].new_graph(start_node_id, agent.id)
 
         self.graphs[agent.id] = new_agent
+
+        self.num_agents += 1
 
 
     def add_keyframe(self, KF, node_id):
@@ -129,16 +133,15 @@ class Backend():
                             edge.covariance[0][0], edge.covariance[1][1], edge.covariance[2][2]]
                 graph['node_buffer'].append(out_node)
                 graph['edge_buffer'].append(out_edge)
-                self.update_gtsam(id)
-
-                # for e in graph['graph'].edges():
-                #     if 'from_id' not in graph['graph'].edge[e[0]][e[1]]:
-                #         debug = 1
-
 
         # Find Loop Closures
         # if count > 1:
         #     debug = 1
+        self.optimization_counter += 1
+        if self.optimization_counter > self.num_agents * 10:
+            for id in keys:
+                self.update_gtsam(id)
+
         if len(self.new_keyframes) > 1:
             self.find_loop_closures()
 
@@ -155,12 +158,10 @@ class Backend():
         # if not nx.is_connected(graph['graph']):
         #     print "something went wrong - error 1"
         try:
-            # graph['optimizer'].add_lc_batch(graph['lc_buffer'])
-            self.optimization_time_array.append(graph['optimizer'].add_edge_batch(graph['node_buffer'], graph['edge_buffer']))
-            # graph['lc_buffer'] = []
+            self.optimization_time_array.append([id, len(self.graphs), len(graph['graph'].nodes()), len(graph['graph'].nodes()), graph['optimizer'].add_edge_batch(graph['node_buffer'], graph['edge_buffer'])])
             graph['node_buffer'] = []
             graph['edge_buffer'] = []
-            self.optimization_time_array.append(graph['optimizer'].optimize())
+            self.optimization_time_array.append([id, len(self.graphs), len(graph['graph'].nodes()), len(graph['graph'].nodes()), graph['optimizer'].optimize()])
 
         except:
             print "something went wrong - error 2"
@@ -168,6 +169,7 @@ class Backend():
         for node in optimized_values["nodes"]:
             node_id = node[0]
             graph['graph'].node[node_id]['pose']=[node[1], node[2], node[3]]
+        self.optimization_counter = 0
 
 
     def find_loop_closures(self):
@@ -237,14 +239,10 @@ class Backend():
                     # self.plot()
 
                     # Merge graph2 into graph1
+                    self.update_gtsam(graph2)
+                    self.update_gtsam(graph1)
                     self.merge_graphs(self.graphs[graph1], self.graphs[graph2], to_node_id, from_node_id, transform,
                                       covariance)
-
-                    # self.plot()
-                    # debug = 1
-                    self.update_gtsam(graph1)
-                    # self.plot()
-                    # debug = 2
 
                     # Now that we have merged the graphs, we can get rid of graph2
                     del self.graphs[graph2]
@@ -326,58 +324,77 @@ class Backend():
         psi = -T[2]
         return [dx, dy, psi]
 
+    def init_plots(self, num_subplots):
+        self.num_subplots = num_subplots
+
+        rows = int(ceil(self.num_subplots/self.num_subplots**0.5))
+        cols = int(ceil(self.num_subplots/float(rows)))
+
+
+        self.figs = []
+        self.axes = []
+        self.lines = []
+        for i in range(2):
+            self.figs.append(plt.figure(i+1, figsize=(12, 15), dpi=80, facecolor='w', edgecolor='k'))
+            plt.clf()
+            subplot_axes = []
+            subplot_lines = []
+            for j in range(self.num_subplots):
+                subplot_axes.append(plt.subplot(rows, cols, j + 1))
+                subplot_lines.append(subplot_axes[-1].plot([0,0]))
+            self.axes.append(subplot_axes)
+            self.lines.append(subplot_lines)
+            self.figs[i].show()
+            self.figs[i].canvas.draw()
+
+
     def plot(self):
         num_subplots = len(self.graphs) + 1
-        if num_subplots > 25:
-          num_subplots = 25
+        if num_subplots < self.num_subplots:
+            self.init_plots(num_subplots)
 
-        rows = int(ceil(num_subplots/num_subplots**0.5))
-        cols = int(ceil(num_subplots/float(rows)))
-
-        # Prepare figures
-        plt.ion()
-        for i in range(2):
-            plt.figure(i+1, figsize=(12,15), dpi=80, facecolor='w', edgecolor='k')
-            plt.clf()
+        rows = int(ceil(self.num_subplots/self.num_subplots**0.5))
+        cols = int(ceil(self.num_subplots/float(rows)))
 
         # Plot the combined graph
         for i in range(2):
-            plt.figure(i+1)
-            ax = plt.subplot(rows, cols,  1)
             combined_graph = nx.Graph()
             for id, graph in self.graphs.iteritems():
                 combined_graph = nx.compose(combined_graph, graph['graph'])
             self.plot_graph(combined_graph, title='full truth', edge_color='r', truth=1,
-                            axis_handle=ax)
+                            axis_handle=self.axes[i][0], line_handle=self.lines[i][0][0], figure_handle=self.figs[i])
+            self.figs[i].canvas.flush_events()
 
-        i = 1
         names = [' truth', ' optimized']
         truth = [1, 0]
 
-        num_connected_agents = [[id, len(graph['connected_agents'])] for id, graph in self.graphs.iteritems()]
-        num_connected_agents = sorted(num_connected_agents, key=itemgetter(1), reverse=True)
-        num_connected_agents = [x[0][0] for x in zip(num_connected_agents)]
+        agents = []
+        if len(self.graphs) > self.num_subplots:
+            agents = [[id, len(graph['connected_agents'])] for id, graph in self.graphs.iteritems()]
+            agents = sorted(agents, key=itemgetter(1), reverse=True)
+            agents = [x[0][0] for x in zip(agents)]
+        else:
+            agents = [id for id, graph in self.graphs.iteritems()]
 
-        for i in range(num_subplots-1):
-            agent = num_connected_agents[i]
-            for j in range(2):
-                plt.figure(j+1)
-                ax = plt.subplot(rows, cols, i+1)
+
+        for j in range(2):
+            for i in range(self.num_subplots - 1):
+                agent = agents[i]
                 self.plot_graph(self.graphs[agent]['graph'], title=str(agent) + names[j], edge_color='g', truth=truth[j],
-                              axis_handle=ax)
-        plt.pause(0.005) # delay for painting process
+                          axis_handle=self.axes[j][i+1], line_handle=self.lines[j][i+1][0], figure_handle=self.figs[j])
+            # self.figs[j].canvas.draw()
+            self.figs[j].canvas.draw()
+            debug = 1
 
 
         # Save frames for future movie making
-        plt.figure(1)
-        plt.savefig("movie/truth_" + str(self.frame_number).zfill(4) + ".png")
-        plt.figure(2)
-        plt.savefig("movie/optimized_" + str(self.frame_number).zfill(4) + ".png")
+        self.figs[0].savefig("movie/truth_" + str(self.frame_number).zfill(4) + ".png")
+        self.figs[1].savefig("movie/optimized_" + str(self.frame_number).zfill(4) + ".png")
         self.frame_number += 1
         plt.ioff()
 
         # also pickle up the optimization_time array
-        pickle.dump(self.optimization_time_array, open('time_array', 'wb'))
+        # pickle.dump(self.optimization_time_array, open('time_array.pkl', 'wb'))
 
 
     def find_transform(self, from_pose, to_pose):
@@ -397,53 +414,83 @@ class Backend():
         # Pack up and output the loop closure
         return [dx[0], dx[1], dpsi]
 
-    def plot_graph(self, graph, title='default', name='default', arrows=False, axis_handle=-1, edge_color='m',
-                   truth=False, plot_lc=False):
-        if axis_handle < 0:
-            plt.figure(figsize=(12,15), dpi=80, facecolor='w', edgecolor='k')
-            plt.clf()
-            axis_handle = plt.subplot(111)
-        plt.title(title)
+    def plot_graph(self, graph, line_handle, figure_handle, axis_handle, title='default', name='default',
+                   arrows=False,  edge_color='m', truth=False, plot_lc=False, ):
+        # if axis_handle < 0 or figure_handle < 0:
+        #     figure_handle = plt.figure(figsize=(12,15), dpi=80, facecolor='w', edgecolor='k')
+        #     figure_handle.clf()
+        #     axis_handle = figure_handle.subplot(111)
+        axis_handle.set_title(title)
 
-        # Get positions of all nodes
-        plot_positions = dict()
-        for (i, n) in graph.node.iteritems():
-            if truth:
-                plot_positions[i] = [n['KF'][1], n['KF'][0]]
-            else:
-                try:
-                    plot_positions[i] = [n['pose'][1], n['pose'][0]]
-                except:
-                    print "error 6"
+        # if line_handle < 0:
+        #     line_handle = plt.plot([0,0])
 
-        plot_graph = graph.copy()
+        path_data = []
+        if truth:
+            path_data = [[graph.node[node]['KF'][1], graph.node[node]['KF'][0], node] for node in sorted(graph.nodes())]
+        else:
+            path_data = [[graph.node[node]['pose'][1], graph.node[node]['pose'][0], node] for node in sorted(graph.nodes())]
 
-        # Remove Loop Closures
-        if not plot_lc:
-            for pair in graph.edges():
-                i = pair[0]
-                j = pair[1]
-                vID_i = int(i.split("_")[0])
-                vID_j = int(j.split("_")[0])
-                if vID_i != vID_j:
-                    plot_graph.remove_edge(i, j)
+        # Add nans at discontinuities
+        i = 0
+        while i  < len(path_data) - 2:
+            # If there is no edge between these nodes
+            if path_data[i+1][2] not in graph.edge[path_data[i][2]].keys():
+                # Insert a Nan to tell matplotlib not to plot a line between these two points
+                path_data.insert(i+1, [np.nan, np.nan, 'none'])
+                i += 1
+            i += 1
 
-        nx.draw_networkx(plot_graph, pos=plot_positions,
-                         with_labels=False, ax=axis_handle, edge_color=edge_color,
-                         linewidths="0.3", node_color='c', node_shape='')
-        if arrows:
-            for i, n in graph.node.iteritems():
-                if 'pose' in n:
-                    pose = n['pose']
-                else:
-                    pose = n['KF']
-                arrow_length = 1.0
-                dx = arrow_length * cos(pose[2])
-                dy = arrow_length * sin(pose[2])
-                # Be sure to convert to NWU for plotting
-                axis_handle.arrow(pose[1], pose[0], dy, dx, head_width=arrow_length*0.15, head_length=arrow_length*0.3, fc='c', ec='b')
+        # Plot the points
+        path_data = np.array(path_data)
+        line_handle.set_xdata(path_data[:,0])
+        line_handle.set_ydata(path_data[:,1])
+        # axis_handle.draw_artist(axis_handle.patch)
+        axis_handle.draw_artist(line_handle)
+        # figure_handle.canvas.update()
+        axis_handle.relim()
+        axis_handle.autoscale_view()
+        axis_handle.set_aspect('equal','datalim')
 
-        plt.axis("equal")
+        # # Get positions of all nodes
+        # plot_positions = dict()
+        # for (i, n) in graph.node.iteritems():
+        #     if truth:
+        #         plot_positions[i] = [n['KF'][1], n['KF'][0]]
+        #     else:
+        #         try:
+        #             plot_positions[i] = [n['pose'][1], n['pose'][0]]
+        #         except:
+        #             print "error 6"
+        #
+        # plot_graph = graph.copy()
+        #
+        # # Remove Loop Closures
+        # if not plot_lc:
+        #     for pair in graph.edges():
+        #         i = pair[0]
+        #         j = pair[1]
+        #         vID_i = int(i.split("_")[0])
+        #         vID_j = int(j.split("_")[0])
+        #         if vID_i != vID_j:
+        #             plot_graph.remove_edge(i, j)
+        #
+        # nx.draw_networkx(plot_graph, pos=plot_positions,
+        #                  with_labels=False, ax=axis_handle, edge_color=edge_color,
+        #                  linewidths="0.3", node_color='c', node_shape='')
+        # if arrows:
+        #     for i, n in graph.node.iteritems():
+        #         if 'pose' in n:
+        #             pose = n['pose']
+        #         else:
+        #             pose = n['KF']
+        #         arrow_length = 1.0
+        #         dx = arrow_length * cos(pose[2])
+        #         dy = arrow_length * sin(pose[2])
+        #         # Be sure to convert to NWU for plotting
+        #         axis_handle.arrow(pose[1], pose[0], dy, dx, head_width=arrow_length*0.15, head_length=arrow_length*0.3, fc='c', ec='b')
+
+        # plt.axis("equal")
 
     def plot_agent(self,graph, agent, axis_handle=-1, color='c', truth=False):
         nodes = sorted(graph.node)
