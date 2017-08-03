@@ -1,4 +1,5 @@
 from backend import *
+from keyframe_matcher_sim import KeyframeMatcher
 from robot import *
 from controller import *
 from tqdm import tqdm
@@ -15,11 +16,13 @@ if __name__ == "__main__":
 
     robots = []
     controllers = []
-    num_robots = 100
+    num_robots = 50
     KF_frequency_s = 1.0
     plot_frequency_s = 2
 
-    start_pose_range = [25, 25, 2]
+    kf_matcher = KeyframeMatcher()
+
+    start_pose_range = [5, 5, 2]
 
     start_poses = [[randint(-start_pose_range[0], start_pose_range[0])*10,
                    randint(-start_pose_range[1], start_pose_range[1])*10,
@@ -56,6 +59,14 @@ if __name__ == "__main__":
                 backend.add_odometry(r, str(r) + "_" + str(robots[r].keyframe_id() - 1).zfill(3),
                          str(r) + "_" + str(robots[r].keyframe_id()).zfill(3), G,
                          edge, KF)
+
+                # Add the keyframe to the kf_matcher
+                kf_matcher.add_keyframe(KF, str(r) + "_" + str(robots[r].keyframe_id()).zfill(3))
+
+                # look for loop closures
+                loop_closures = kf_matcher.find_loop_closures()
+                for lc in loop_closures:
+                    backend.add_loop_closure(**lc)
 
         # plot maps
         if t % plot_frequency_s == 0 and t > 0:

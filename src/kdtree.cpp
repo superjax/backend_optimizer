@@ -58,13 +58,13 @@ py::list KDTree::find_closest_point(pybind11::list point, double distance)
 
 //  std::cout << "\n\n\n";
 //  std::cout << "matching " << id << ": " << node_name_to_id_map_[id] << " = " << query_pt[0] << ", " << query_pt[1] << ", " << query_pt[2] << "\n";
-//  for( int i = 0; i < num_results; i++)
-//  {
-//    double x = points_mat(ret_indexes[i], 0);
-//    double y = points_mat(ret_indexes[i], 1);
-//    double z = points_mat(ret_indexes[i], 2);
+  for( int i = 0; i < num_results; i++)
+  {
+    double x = points_mat(ret_indexes[i], 0);
+    double y = points_mat(ret_indexes[i], 1);
+    double z = points_mat(ret_indexes[i], 2);
 //    std::cout << "result[" << i << "]=" << ret_indexes[i] << ":" << node_id_to_name_map_[ret_indexes[i]] << " -> " << x << ", " << y << ", " << z << " dist = " << distances[i] << "\n";
-//  }
+  }
 
   std::string closest_id = "none";
   double x = 0;
@@ -74,46 +74,21 @@ py::list KDTree::find_closest_point(pybind11::list point, double distance)
   uint64_t index_of_id = node_name_to_id_map_[id];
   py::list out;
 
-  if (index_of_id == ret_indexes[0])
+  for (int i = 0; i < num_results; i++)
   {
-    if (distances[1] < distance)
+    if (index_of_id != ret_indexes[i])
     {
-      closest_id = node_id_to_name_map_[ret_indexes[1]];
-      x = points_mat(ret_indexes[1], 0);
-      y = points_mat(ret_indexes[1], 1);
-      z = points_mat(ret_indexes[1], 2);
+      if (distances[i] < distance)
+      {
+        closest_id = node_id_to_name_map_[ret_indexes[i]];
+        x = points_mat(ret_indexes[i], 0);
+        y = points_mat(ret_indexes[i], 1);
+        z = points_mat(ret_indexes[i], 2);
+
+//        printf("closest point to %s(%lu) is %s(%lu) at distance %f", id.c_str(), index_of_id, closest_id.c_str(), ret_indexes[i], distances[i]);
+      }
     }
-//    std::cout << "found match 1 " << id << ":" << index_of_id << " with " << node_id_to_name_map_[ret_indexes[1]] << ":" << ret_indexes[1] << "\n";
-//    std::cout << "in = "
-//              <<   query_pt[0]  << ", "
-//              <<   query_pt[1]  << ", "
-//              <<   query_pt[2]  << "\n ";
-
-//    std::cout << "to = "
-//              << x << ", " << y << ", " << z << "\n";
-//    std::cout << "dist = " << distances[1] << "\n";
   }
-  else
-  {
-    if (distances[0] < distance)
-    {
-      closest_id = node_id_to_name_map_[ret_indexes[0]];
-      x = points_mat(ret_indexes[0], 0);
-      y = points_mat(ret_indexes[0], 1);
-      z = points_mat(ret_indexes[0], 2);
-    }
-//    std::cout << "found match 2 " << id << ":" << index_of_id << " with " << node_id_to_name_map_[ret_indexes[0]] << ":" << ret_indexes[0] << "\n";
-//    std::cout << "in = "
-//              <<   query_pt[0]  << ", "
-//              <<   query_pt[1]  << ", "
-//              <<   query_pt[2]  << "\n ";
-
-//    std::cout << "to = "
-//              << x << ", " << y << ", " << z << "\n";
-//    std::cout << "dist = " << distances[0] << "\n";
-  }
-
-//  std::cout << "\n\npoints_mat*****************\n " << points_mat << "\n\n";
 
   out.append(closest_id);
   out.append(x);
