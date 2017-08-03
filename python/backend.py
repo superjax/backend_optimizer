@@ -69,7 +69,7 @@ class Backend():
         matplotlib.use('GTKAgg')
         matplotlib.rc('font', **font)
 
-        self.init_plots(25)
+        self.init_plots(4)
 
 
     def add_agent(self, agent):
@@ -98,31 +98,31 @@ class Backend():
     def add_keyframe(self, KF, node_id):
         self.new_keyframes.append([node_id, KF[0], KF[1], KF[2]])
 
-    def add_odometry(self, edge):
+    def add_odometry(self, vehicle_id, from_id, to_id, covariance, transform, keyframe):
 
         # Figure out which graph this odometry goes with
         keys = self.graphs.keys()
         count = 0
         for id in keys:
-            if edge.vehicle_id in self.graphs[id]['connected_agents']:
+            if vehicle_id in self.graphs[id]['connected_agents']:
                 count += 1
                 graph = self.graphs[id]
-                graph['graph'].add_edge(edge.from_id, edge.to_id, covariance=edge.covariance,
-                                        transform=edge.transform, from_id=edge.from_id, to_id=edge.to_id)
-                graph['graph'].node[edge.to_id]['KF'] = edge.KF
+                graph['graph'].add_edge(from_id, to_id, covariance=covariance,
+                                        transform=transform, from_id=from_id, to_id=to_id)
+                graph['graph'].node[to_id]['KF'] = keyframe
 
                 # Add Keyframe to the backend
-                self.add_keyframe(edge.KF, edge.to_id)
+                self.add_keyframe(keyframe, to_id)
 
                 # Concatenate to get a best guess for the pose of the node
-                from_pose = graph['graph'].node[edge.from_id]['pose']
-                to_pose = self.concatenate_transform(from_pose, edge.transform)
-                graph['graph'].node[edge.to_id]['pose'] = to_pose
+                from_pose = graph['graph'].node[from_id]['pose']
+                to_pose = self.concatenate_transform(from_pose, transform)
+                graph['graph'].node[to_id]['pose'] = to_pose
 
                 # Prepare this edge for the optimizer
-                out_node = [edge.to_id, to_pose[0], to_pose[1], to_pose[2]]
-                out_edge = [edge.from_id, edge.to_id, edge.transform[0], edge.transform[1], edge.transform[2],
-                            edge.covariance[0][0], edge.covariance[1][1], edge.covariance[2][2]]
+                out_node = [to_id, to_pose[0], to_pose[1], to_pose[2]]
+                out_edge = [from_id, to_id, transform[0], transform[1], transform[2],
+                            covariance[0][0], covariance[1][1], covariance[2][2]]
                 graph['node_buffer'].append(out_node)
                 graph['edge_buffer'].append(out_edge)
 

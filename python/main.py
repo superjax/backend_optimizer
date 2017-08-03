@@ -52,12 +52,10 @@ if __name__ == "__main__":
                 # Declare a new keyframe
                 edge, KF = robots[r].reset()
 
-                e = Edge(r, str(r) + "_" + str(robots[r].keyframe_id() - 1).zfill(3),
+                # Add odometry to all maps
+                backend.add_odometry(r, str(r) + "_" + str(robots[r].keyframe_id() - 1).zfill(3),
                          str(r) + "_" + str(robots[r].keyframe_id()).zfill(3), G,
                          edge, KF)
-
-                # Add odometry to all maps
-                backend.add_odometry(e)
 
         # plot maps
         if t % plot_frequency_s == 0 and t > 0:
