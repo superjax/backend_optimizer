@@ -8,7 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 find_package(Eigen REQUIRED)
 
-SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=gnu++11 ${OpenMP_CXX_FLAGS} -O3")
+SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=gnu++11 ${OpenMP_CXX_FLAGS} -O2 -mfma -mavx")
 
 find_package(GTSAM)
 find_package(pybind11)

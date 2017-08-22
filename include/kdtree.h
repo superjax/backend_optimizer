@@ -12,6 +12,7 @@ using namespace nanoflann;
 class KDTree
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   KDTree();
 
   void add_points(py::list new_points);

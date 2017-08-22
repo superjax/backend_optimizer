@@ -70,6 +70,12 @@ class Backend():
 
         self.num_agents += 1
 
+    def add_truth(self, node_id, KF):
+        vehicle_id = int(node_id.split("_")[0])
+        for id in self.graphs.keys():
+            if vehicle_id in self.graphs[id]['connected_agents']:
+                self.graphs[id]['graph'].node[node_id]['KF'] = KF
+
     def add_odometry(self, vehicle_id, from_id, to_id, covariance, transform, keyframe):
 
         # Figure out which graph this odometry goes with
@@ -81,7 +87,9 @@ class Backend():
                 graph = self.graphs[id]
                 graph['graph'].add_edge(from_id, to_id, covariance=covariance,
                                         transform=transform, from_id=from_id, to_id=to_id)
-                graph['graph'].node[to_id]['KF'] = keyframe
+
+                if keyframe:
+                    graph['graph'].node[to_id]['KF'] = keyframe
 
                 # Concatenate to get a best guess for the pose of the node
                 from_pose = graph['graph'].node[from_id]['pose']
@@ -96,10 +104,10 @@ class Backend():
                 graph['edge_buffer'].append(out_edge)
 
         # Optimize
-        self.optimization_counter += 1
-        if self.optimization_counter > self.num_agents * 10:
-            for id in keys:
-                self.update_gtsam(id)
+        # self.optimization_counter += 1
+        # if self.optimization_counter > self.num_agents * 10:
+        for id in keys:
+            self.update_gtsam(id)
 
     def finish_up(self):
         # update optimizer
@@ -175,9 +183,6 @@ class Backend():
             del self.graphs[graph2]
             print "deleting graph ", graph2
 
-        # Clear the new keyframes list so we don't keep adding redundant keyframes to the matcher
-        self.new_keyframes = []
-
 
     # this function merges graph1 into graph2
     def merge_graphs(self, graph1, graph2, to_node_id, from_node_id, transform, covariance):
@@ -223,7 +228,8 @@ class Backend():
         for node_id in new_nodes:
             pose = self.concatenate_transform(transform_between_graphs, graph2['graph'].node[node_id]['pose'])
             graph1['graph'].node[node_id]['pose'] = pose
-            graph1['graph'].node[node_id]['KF'] = graph2['graph'].node[node_id]['KF']
+            if 'KF' in graph1['graph'].node[node_id]:
+                graph1['graph'].node[node_id]['KF'] = graph2['graph'].node[node_id]['KF']
             graph1['node_buffer'].append([node_id, pose[0], pose[1], pose[2]])
 
         # Add the new edges to the optimizer
@@ -309,7 +315,6 @@ class Backend():
                 agent = agents[i]
                 self.plot_graph(self.graphs[agent]['graph'], title=str(agent) + names[j], edge_color='g', truth=truth[j],
                           axis_handle=self.axes[j][i+1], line_handle=self.lines[j][i+1][0], figure_handle=self.figs[j])
-            # self.figs[j].canvas.draw()
             self.figs[j].canvas.draw()
             debug = 1
 
@@ -354,7 +359,7 @@ class Backend():
 
         path_data = []
         if truth:
-            path_data = [[graph.node[node]['KF'][1], graph.node[node]['KF'][0], node] for node in sorted(graph.nodes())]
+            path_data = [[graph.node[node]['KF'][1], graph.node[node]['KF'][0], node] for node in sorted(graph.nodes()) if 'KF' in graph.node[node]]
         else:
             path_data = [[graph.node[node]['pose'][1], graph.node[node]['pose'][0], node] for node in sorted(graph.nodes())]
 
@@ -362,11 +367,17 @@ class Backend():
         i = 0
         while i  < len(path_data) - 2:
             # If there is no edge between these nodes
-            if path_data[i+1][2] not in graph.edge[path_data[i][2]].keys():
+            if path_data[i][2] not in graph.edge.keys() or path_data[i+1][2] not in graph.edge[path_data[i][2]].keys():
                 # Insert a Nan to tell matplotlib not to plot a line between these two points
                 path_data.insert(i+1, [np.nan, np.nan, 'none'])
                 i += 1
             i += 1
+
+        plot_node_names = False
+        if plot_node_names:
+            for point in path_data:
+                if point[2] != 'none':
+                    axis_handle.text(point[0], point[1], point[2], fontsize=7)
 
         # Plot the points
         path_data = np.array(path_data)

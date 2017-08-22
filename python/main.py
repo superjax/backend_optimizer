@@ -18,7 +18,7 @@ if __name__ == "__main__":
     controllers = []
     num_robots = 50
     KF_frequency_s = 1.0
-    plot_frequency_s = 2
+    plot_frequency_s = 10
 
     kf_matcher = KeyframeMatcher()
 
@@ -63,13 +63,12 @@ if __name__ == "__main__":
                 # Add the keyframe to the kf_matcher
                 kf_matcher.add_keyframe(KF, str(r) + "_" + str(robots[r].keyframe_id()).zfill(3))
 
-                # look for loop closures
-                loop_closures = kf_matcher.find_loop_closures()
-                for lc in loop_closures:
-                    backend.add_loop_closure(**lc)
-
         # plot maps
         if t % plot_frequency_s == 0 and t > 0:
+            # look for loop closures
+            loop_closures = kf_matcher.find_loop_closures()
+            for lc in loop_closures:
+                backend.add_loop_closure(**lc)
             backend.plot()
 
     backend.finish_up()

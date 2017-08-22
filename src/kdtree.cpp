@@ -34,7 +34,6 @@ void KDTree::add_points(py::list new_points)
 
   kd_tree_ = new KDTree3D(3, points_mat, 10);
   kd_tree_->index->buildIndex();
-//  std::cout << "built index\n";
 }
 
 py::list KDTree::find_closest_point(pybind11::list point, double distance)
@@ -42,11 +41,16 @@ py::list KDTree::find_closest_point(pybind11::list point, double distance)
   std::string id = point[0].cast<std::string>();
   std::vector<double> query_pt(3);
 
+  std::string s = id;
+  std::string delim = "_";
+  int vehicle_id = std::stoi(s.substr(0, s.find(delim)));
+  int node_id = std::stoi(s.erase(0, s.find(delim) + delim.length()));
+
   query_pt[0] = point[1].cast<double>(),
   query_pt[1] = point[2].cast<double>(),
   query_pt[2] = point[3].cast<double>();
 
-  uint8_t num_results = 2;
+  uint8_t num_results = 25;
   std::vector<uint64_t> ret_indexes(num_results);
   std::vector<double> distances(num_results);
 
@@ -56,16 +60,6 @@ py::list KDTree::find_closest_point(pybind11::list point, double distance)
   // Find the nearest neighbors
   kd_tree_->index->findNeighbors(resultsSet, &query_pt[0], nanoflann::SearchParams(10));
 
-//  std::cout << "\n\n\n";
-//  std::cout << "matching " << id << ": " << node_name_to_id_map_[id] << " = " << query_pt[0] << ", " << query_pt[1] << ", " << query_pt[2] << "\n";
-  for( int i = 0; i < num_results; i++)
-  {
-    double x = points_mat(ret_indexes[i], 0);
-    double y = points_mat(ret_indexes[i], 1);
-    double z = points_mat(ret_indexes[i], 2);
-//    std::cout << "result[" << i << "]=" << ret_indexes[i] << ":" << node_id_to_name_map_[ret_indexes[i]] << " -> " << x << ", " << y << ", " << z << " dist = " << distances[i] << "\n";
-  }
-
   std::string closest_id = "none";
   double x = 0;
   double y = 0;
@@ -74,18 +68,35 @@ py::list KDTree::find_closest_point(pybind11::list point, double distance)
   uint64_t index_of_id = node_name_to_id_map_[id];
   py::list out;
 
+  bool found_match = false;
   for (int i = 0; i < num_results; i++)
   {
     if (index_of_id != ret_indexes[i])
     {
       if (distances[i] < distance)
       {
+        std::string s = node_id_to_name_map_[ret_indexes[i]];
+        int proposed_vehicle_id = std::stoi(s.substr(0, s.find(delim)));
+        int proposed_node_id = std::stoi(s.erase(0, s.find(delim) + delim.length()));
+
+        if (proposed_vehicle_id == vehicle_id)
+        {
+          if (std::abs(proposed_node_id - node_id) < 10)
+            continue;
+        }
+
         closest_id = node_id_to_name_map_[ret_indexes[i]];
         x = points_mat(ret_indexes[i], 0);
         y = points_mat(ret_indexes[i], 1);
         z = points_mat(ret_indexes[i], 2);
-
-//        printf("closest point to %s(%lu) is %s(%lu) at distance %f", id.c_str(), index_of_id, closest_id.c_str(), ret_indexes[i], distances[i]);
+//          printf("closest point to %s(%lu) is %s(%lu) at distance %f", id.c_str(), index_of_id, closest_id.c_str(), ret_indexes[i], distances[i]);
+        found_match = true;
+        break;
+      }
+      else
+      {
+//        printf("point %s(%lu) is %f away from %s(%lu)",  id.c_str(), index_of_id, distances[i], closest_id.c_str(), ret_indexes[i]);
+        break;
       }
     }
   }
