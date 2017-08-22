@@ -1,0 +1,79 @@
+#!/usr/bin/env python
+
+from keyframe_matcher_sim import KeyframeMatcher
+from nav_msgs.msg import Odometry
+from relative_nav.msg import KeyframeSE2, LoopClosureSE2
+import rospy
+import tf.transformations
+import random
+
+class ROS_KF_matcher():
+    def __init__(self):
+        self.kf_matcher = KeyframeMatcher()
+        rospy.Subscriber("leo/keyframe", KeyframeSE2, self.kf_callback, queue_size=100)
+        rospy.Subscriber("mikey/keyframe", KeyframeSE2, self.kf_callback, queue_size=100)
+        rospy.Subscriber("raph/keyframe", KeyframeSE2, self.kf_callback, queue_size=100)
+        rospy.Subscriber("donny/keyframe", KeyframeSE2, self.kf_callback, queue_size=100)
+
+        self.lc_pub = rospy.Publisher("loop_closures", LoopClosureSE2, queue_size=10)
+
+        self.kf_queue = []
+        self.updating = False
+
+        self.sigma_x = 0.1
+        self.sigma_y = 0.1
+        self.sigma_z = 0.05
+
+        try:
+            rospy.spin()
+        except:
+            print "done"
+
+    def kf_callback(self, msg):
+        new_lc = dict()
+        new_lc['KF'] = [msg.transform.x, msg.transform.y, msg.transform.z]
+        new_lc['node_id'] = str(msg.vehicle_id) + "_" + str(msg.node_id).zfill(3)
+        self.kf_queue.append(new_lc)
+        self.update_matcher()
+
+    def update_matcher(self):
+        if self.updating:
+            return
+
+        self.updating = True
+        while self.kf_queue:
+            new_lc = self.kf_queue.pop(0)
+            self.kf_matcher.add_keyframe(new_lc['KF'], new_lc['node_id'])
+        loop_closures = self.kf_matcher.find_loop_closures()
+
+        for lc in loop_closures:
+            to_vehicle_id = int(lc['to_node_id'].split("_")[0])
+            to_node_id = int(lc['to_node_id'].split("_")[1])
+            from_vehicle_id = int(lc['from_node_id'].split("_")[0])
+            from_node_id = int(lc['from_node_id'].split("_")[1])
+
+            msg = LoopClosureSE2()
+            msg.transform.x = lc['transform'][0] + self.sigma_x*random.random()
+            msg.transform.y = lc['transform'][1] + self.sigma_y*random.random()
+            msg.transform.z = lc['transform'][2] + self.sigma_z*random.random()
+
+            msg.from_node_id = from_node_id
+            msg.to_node_id = to_node_id
+            msg.from_vehicle_id = from_vehicle_id
+            msg.to_vehicle_id = to_vehicle_id
+            msg.header.stamp = rospy.Time.now()
+            self.lc_pub.publish(msg)
+
+        self.updating = False
+
+
+if __name__ == "__main__":
+    rospy.init_node('keyframe_matcher_sim')
+    thing = ROS_KF_matcher()
+
+
+
+
+
+
+

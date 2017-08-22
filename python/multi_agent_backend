@@ -1,0 +1,156 @@
+#!/usr/bin/env python
+from backend import *
+from robot import *
+import rospy
+from relative_nav.msg import Edge, LoopClosureSE2, KeyframeSE2
+from nav_msgs.msg import Odometry
+import tf.transformations
+import thread
+
+class ROS_backend():
+    def __init__(self):
+
+        self.backend = Backend()
+
+        leo = Robot(0, np.zeros([3,3]), [20, -25, 0])
+        self.backend.add_agent(leo)
+        mikey = Robot(1, np.zeros([3,3]), [0, 0, 0])
+        self.backend.add_agent(mikey)
+        raph = Robot(2, np.zeros([3,3]), [30, 10, 0])
+        self.backend.add_agent(raph)
+        donny = Robot(3, np.zeros([3,3]), [-25, -30, 0])
+        self.backend.add_agent(donny)
+
+        rospy.Subscriber("leo/edge", Edge, self.odom_callback, queue_size=10)
+        rospy.Subscriber("donny/edge", Edge, self.odom_callback, queue_size=10)
+        rospy.Subscriber("raph/edge", Edge, self.odom_callback, queue_size=10)
+        rospy.Subscriber("mikey/edge", Edge, self.odom_callback, queue_size=10)
+        rospy.Subscriber("leo/keyframe", KeyframeSE2, self.kf_callback, queue_size=100)
+        rospy.Subscriber("donny/keyframe", KeyframeSE2, self.kf_callback, queue_size=100)
+        rospy.Subscriber("raph/keyframe", KeyframeSE2, self.kf_callback, queue_size=100)
+        rospy.Subscriber("mikey/keyframe", KeyframeSE2, self.kf_callback, queue_size=100)
+
+        rospy.Subscriber("loop_closures", LoopClosureSE2, self.lc_callback, queue_size=10)
+
+        self.lc_queue = []
+
+        self.added_nodes = []
+
+        self.edges = []
+        self.keyframes = dict()
+
+        self.new_info = False
+
+        self.updating_backend = False
+
+        # start up the spinner
+        thread.start_new(self.run, ())
+
+        # Render Thread
+        while not rospy.is_shutdown():
+            self.plot()
+
+
+
+    def run(self):
+        try:
+            rospy.spin()
+        except:
+            print "done"
+
+    def update_backend(self):
+        if self.updating_backend:
+            return
+        else:
+            self.updating_backend = True
+
+        # Add odometry
+        while self.edges:
+            new_odom = self.edges.pop(0)
+            if new_odom[1] in self.keyframes.keys():
+                new_odom.append(self.keyframes[new_odom[1]])
+                del self.keyframes[new_odom[1]]
+            else:
+                new_odom.append([])
+            self.backend.add_odometry(*new_odom)
+
+            self.added_nodes.append(new_odom[1])
+            self.new_info = True
+
+        # Add any late keyframes
+        for key in self.keyframes.keys():
+            if key in self.added_nodes:
+                self.backend.add_truth(key, self.keyframes[key])
+                del self.keyframes[key]
+                self.new_info = True
+
+        # Add loop closures
+        i = 0
+        while i < len(self.lc_queue):
+            lc = self.lc_queue[i]
+            if lc[0] in self.added_nodes and lc[1] in self.added_nodes:
+                self.backend.add_loop_closure(*self.lc_queue.pop(i))
+            else:
+                i += 1
+
+        self.updating_backend = False
+
+    def plot(self):
+        if self.new_info:
+            self.backend.plot()
+            self.new_info = False
+
+    def odom_callback(self, msg):
+        from_id = str(msg.from_vehicle_id) + "_" + str(msg.from_node_id).zfill(3)
+        to_id = str(msg.to_vehicle_id) + "_" + str(msg.to_node_id).zfill(3)
+        covariance = np.diag([0.1, 0.1, 0.1])
+
+        euler = tf.transformations.euler_from_quaternion([msg.transform.rotation.x, msg.transform.rotation.y,
+                                                          msg.transform.rotation.z, msg.transform.rotation.w])
+        transform_SE3 = [msg.transform.translation.x, msg.transform.translation.y, euler[2]]
+
+        self.edges.append([msg.from_vehicle_id, from_id, to_id, covariance, transform_SE3])
+        self.update_backend()
+
+    def kf_callback(self, msg):
+        node_id = str(msg.vehicle_id) + "_" + str(msg.node_id).zfill(3)
+        self.keyframes[node_id] = [msg.transform.x, msg.transform.y, msg.transform.z]
+        self.update_backend()
+
+
+    def lc_callback(self, msg):
+        from_id = str(msg.from_vehicle_id) + "_" + str(msg.from_node_id).zfill(3)
+        to_id = str(msg.to_vehicle_id) + "_" + str(msg.to_node_id).zfill(3)
+        covariance = np.diag([0.001, 0.001, 0.001])
+        transform_SE2 = [msg.transform.x, msg.transform.y, msg.transform.z]
+
+        new_lc = [from_id, to_id, transform_SE2, covariance]
+        self.lc_queue.append(new_lc)
+        self.update_backend()
+
+
+
+
+
+    # def mikey_edge_callback(self, msg):
+    #     debug = 1
+
+
+    # def raph_edge_callback(self, msg):
+
+
+    # def donny_edge_callback(self, msg):
+    #     debug = 1
+
+
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    rospy.init_node('multi_agent_backend')
+    thing = ROS_backend()
