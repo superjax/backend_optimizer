@@ -6,6 +6,8 @@ from relative_nav.msg import Edge, LoopClosureSE2, KeyframeSE2
 from nav_msgs.msg import Odometry
 import tf.transformations
 import thread
+from time import sleep
+import os
 
 class ROS_backend():
     def __init__(self):
@@ -99,6 +101,9 @@ class ROS_backend():
         if self.new_info:
             self.backend.plot()
             self.new_info = False
+        else:
+            sleep(0.001)
+
 
     def odom_callback(self, msg):
         from_id = str(msg.from_vehicle_id) + "_" + str(msg.from_node_id).zfill(3)

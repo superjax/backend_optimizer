@@ -1,24 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from backend_optimizer import backend_optimizer
-from backend_optimizer import kdtree
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib
 from math import *
 import numpy as np
 import pickle
-from operator import itemgetter
+from threading import Lock
+import os
 
 
-class Node():
-    def __init__(self, id, pose):
-        self.id = id
-        self.pose = pose
-        self.true_pose = pose
-
-    def set_pose(self, pose):
-        self.pose = pose
+# class Node():
+#     def __init__(self, id, pose):
+#         self.id = id
+#         self.pose = pose
+#         self.true_pose = pose
+#
+#     def set_pose(self, pose):
+#         self.pose = pose
 
 class Backend():
     def __init__(self):
@@ -48,7 +48,14 @@ class Backend():
         matplotlib.use('GTKAgg')
         matplotlib.rc('font', **font)
 
-        self.init_plots(4)
+        self.max_subplots = 5
+
+        self.graphs_mutex = Lock()
+
+        os.chdir("movie")
+        os.system('rm *.png')
+        os.system('rm *.avi')
+        os.chdir("..")
 
 
     def add_agent(self, agent):
@@ -180,7 +187,9 @@ class Backend():
                               covariance)
 
             # Now that we have merged the graphs, we can get rid of graph2
+            self.graphs_mutex.acquire()
             del self.graphs[graph2]
+            self.graphs_mutex.release()
             print "deleting graph ", graph2
 
 
@@ -257,77 +266,6 @@ class Backend():
         psi = -T[2]
         return [dx, dy, psi]
 
-    def init_plots(self, num_subplots):
-        self.num_subplots = num_subplots
-
-        rows = int(ceil(self.num_subplots/self.num_subplots**0.5))
-        cols = int(ceil(self.num_subplots/float(rows)))
-
-
-        self.figs = []
-        self.axes = []
-        self.lines = []
-        for i in range(2):
-            self.figs.append(plt.figure(i+1, figsize=(12, 15), dpi=80, facecolor='w', edgecolor='k'))
-            plt.clf()
-            subplot_axes = []
-            subplot_lines = []
-            for j in range(self.num_subplots):
-                subplot_axes.append(plt.subplot(rows, cols, j + 1))
-                subplot_lines.append(subplot_axes[-1].plot([0,0]))
-            self.axes.append(subplot_axes)
-            self.lines.append(subplot_lines)
-            self.figs[i].show()
-            self.figs[i].canvas.draw()
-
-
-    def plot(self):
-        num_subplots = len(self.graphs) + 1
-        if num_subplots < self.num_subplots:
-            self.init_plots(num_subplots)
-
-        rows = int(ceil(self.num_subplots/self.num_subplots**0.5))
-        cols = int(ceil(self.num_subplots/float(rows)))
-
-        # Plot the combined graph
-        for i in range(2):
-            combined_graph = nx.Graph()
-            for id, graph in self.graphs.iteritems():
-                combined_graph = nx.compose(combined_graph, graph['graph'])
-            self.plot_graph(combined_graph, title='full truth', edge_color='r', truth=1,
-                            axis_handle=self.axes[i][0], line_handle=self.lines[i][0][0], figure_handle=self.figs[i])
-            self.figs[i].canvas.flush_events()
-
-        names = [' truth', ' optimized']
-        truth = [1, 0]
-
-        agents = []
-        if len(self.graphs) > self.num_subplots:
-            agents = [[id, len(graph['connected_agents'])] for id, graph in self.graphs.iteritems()]
-            agents = sorted(agents, key=itemgetter(1), reverse=True)
-            agents = [x[0][0] for x in zip(agents)]
-        else:
-            agents = [id for id, graph in self.graphs.iteritems()]
-
-
-        for j in range(2):
-            for i in range(self.num_subplots - 1):
-                agent = agents[i]
-                self.plot_graph(self.graphs[agent]['graph'], title=str(agent) + names[j], edge_color='g', truth=truth[j],
-                          axis_handle=self.axes[j][i+1], line_handle=self.lines[j][i+1][0], figure_handle=self.figs[j])
-            self.figs[j].canvas.draw()
-            debug = 1
-
-
-        # Save frames for future movie making
-        self.figs[0].savefig("movie/truth_" + str(self.frame_number).zfill(4) + ".png")
-        self.figs[1].savefig("movie/optimized_" + str(self.frame_number).zfill(4) + ".png")
-        self.frame_number += 1
-        plt.ioff()
-
-        # also pickle up the optimization_time array
-        pickle.dump(self.optimization_time_array, open('time_array.pkl', 'wb'))
-
 
     def find_transform(self, from_pose, to_pose):
         from_pose = np.array(from_pose)
@@ -346,49 +284,137 @@ class Backend():
         # Pack up and output the loop closure
         return [dx[0], dx[1], dpsi]
 
-    def plot_graph(self, graph, line_handle, figure_handle, axis_handle, title='default', name='default',
-                   arrows=False,  edge_color='m', truth=False, plot_lc=False, ):
-        # if axis_handle < 0 or figure_handle < 0:
-        #     figure_handle = plt.figure(figsize=(12,15), dpi=80, facecolor='w', edgecolor='k')
-        #     figure_handle.clf()
-        #     axis_handle = figure_handle.subplot(111)
+    def plot(self):
+        num_subplots = len(self.graphs) + 1
+
+        if num_subplots > self.max_subplots:
+            num_subplots = self.max_subplots
+
+        rows = int(ceil(num_subplots/num_subplots**0.5))
+        cols = int(ceil(num_subplots/float(rows)))
+
+        # Create combined graph for plotting
+        combined_graph = nx.Graph()
+        self.graphs_mutex.acquire()
+        for id, graph in self.graphs.iteritems():
+            combined_graph = nx.compose(combined_graph, graph['graph'])
+        self.graphs_mutex.release()
+
+        # Allow rendering
+        plt.ion()
+
+        for i in range(2):
+            plt.figure(i+1, figsize=(12, 15), dpi=80, facecolor='w', edgecolor='k')
+            plt.clf()
+            # Full Truth Plots are the first subplot
+            ax = plt.subplot(rows, cols, 1)
+            self.plot_graph(combined_graph, axis_handle=ax, title='full_truth', truth=True)
+
+            # Now plot individual maps
+            self.graphs_mutex.acquire()
+            for j in self.graphs.keys():
+                ax = plt.subplot(rows, cols, j + 2)
+                if i == 0:
+                    self.plot_graph(self.graphs[j]['graph'], axis_handle=ax, title=str(j) + ' truth', truth=True)
+                else:
+                    self.plot_graph(self.graphs[j]['graph'], axis_handle=ax, title=str(j) + ' optimized', truth=False)
+            self.graphs_mutex.release()
+
+        # Render Image
+        plt.show()
+        plt.pause(0.001)
+
+        # Save figure
+        plt.figure(1).savefig("movie/truth_" + str(self.frame_number).zfill(4) + ".png")
+        plt.figure(2).savefig("movie/optimized_" + str(self.frame_number).zfill(4) + ".png")
+        self.frame_number += 1
+
+        plt.ioff()
+
+        # also pickle up the optimization_time array
+        pickle.dump(self.optimization_time_array, open('time_array.pkl', 'wb'))
+
+        #
+        #
+        #
+        #
+        # # Plot the combined graph
+        # for i in range(2):
+        #     combined_graph = nx.Graph()
+        #     for id, graph in self.graphs.iteritems():
+        #         combined_graph = nx.compose(combined_graph, graph['graph'])
+        #     self.plot_graph(combined_graph, title='full truth', edge_color='r', truth=1,
+        #                     axis_handle=self.axes[i][0], line_handle=self.lines[i][0][0], figure_handle=self.figs[i])
+        #     self.figs[i].canvas.flush_events()
+        #
+        # names = [' truth', ' optimized']
+        # truth = [1, 0]
+        #
+        # agents = []
+        # if len(self.graphs) > self.max_subplot:
+        #     agents = [[id, len(graph['connected_agents'])] for id, graph in self.graphs.iteritems()]
+        #     agents = sorted(agents, key=itemgetter(1), reverse=True)
+        #     agents = [x[0][0] for x in zip(agents)]
+        # else:
+        #     agents = [id for id, graph in self.graphs.iteritems()]
+        #
+        #
+        # for j in range(2):
+        #     for i in range(self.max_subplots - 1):
+        #         agent = agents[i]
+        #         self.plot_graph(self.graphs[agent]['graph'], title=str(agent) + names[j], edge_color='g', truth=truth[j],
+        #                   axis_handle=self.axes[j][i+1], line_handle=self.lines[j][i+1][0], figure_handle=self.figs[j])
+        #     self.figs[j].canvas.draw()
+        #     debug = 1
+        #
+        #
+        # # Save frames for future movie making
+        # self.figs[0].savefig("movie/truth_" + str(self.frame_number).zfill(4) + ".png")
+        # self.figs[1].savefig("movie/optimized_" + str(self.frame_number).zfill(4) + ".png")
+        # self.frame_number += 1
+        # plt.ioff()
+        #
+        # # also pickle up the optimization_time array
+        # pickle.dump(self.optimization_time_array, open('time_array.pkl', 'wb'))
+
+
+    def plot_graph(self, graph, axis_handle, title='default', truth=False):
         axis_handle.set_title(title)
 
-        # if line_handle < 0:
-        #     line_handle = plt.plot([0,0])
 
-        path_data = []
-        if truth:
-            path_data = [[graph.node[node]['KF'][1], graph.node[node]['KF'][0], node] for node in sorted(graph.nodes()) if 'KF' in graph.node[node]]
-        else:
-            path_data = [[graph.node[node]['pose'][1], graph.node[node]['pose'][0], node] for node in sorted(graph.nodes())]
+        # create the list of positions of each node, divided by agent
+        path_data = dict()
+        for agent in range(self.num_agents):
+            if truth:
+                path_data[agent] = [[graph.node[node]['KF'][1], graph.node[node]['KF'][0], node] for node in sorted(graph.nodes()) if 'KF' in graph.node[node] and agent == int(node.split("_")[0])]
+            else:
+                path_data[agent] = [[graph.node[node]['pose'][1], graph.node[node]['pose'][0], node] for node in sorted(graph.nodes()) if agent == int(node.split("_")[0])]
 
-        # Add nans at discontinuities
-        i = 0
-        while i  < len(path_data) - 2:
-            # If there is no edge between these nodes
-            if path_data[i][2] not in graph.edge.keys() or path_data[i+1][2] not in graph.edge[path_data[i][2]].keys():
-                # Insert a Nan to tell matplotlib not to plot a line between these two points
-                path_data.insert(i+1, [np.nan, np.nan, 'none'])
+            # Add nans at discontinuities
+            i = 0
+            while i  < len(path_data[agent]) - 2:
+                # If there is no edge between these nodes
+                if path_data[agent][i][2] not in graph.edge.keys() or path_data[agent][i+1][2] not in graph.edge[path_data[agent][i][2]].keys():
+                    # Insert a Nan to tell matplotlib not to plot a line between these two points
+                    path_data[agent].insert(i+1, [np.nan, np.nan, 'none'])
+                    i += 1
                 i += 1
-            i += 1
 
-        plot_node_names = False
-        if plot_node_names:
-            for point in path_data:
-                if point[2] != 'none':
-                    axis_handle.text(point[0], point[1], point[2], fontsize=7)
+            plot_node_names = False
+            if plot_node_names:
+                for point in path_data[agent]:
+                    if point[2] != 'none':
+                        axis_handle.text(point[0], point[1], point[2], fontsize=7)
 
-        # Plot the points
-        path_data = np.array(path_data)
-        line_handle.set_xdata(path_data[:,0])
-        line_handle.set_ydata(path_data[:,1])
-        # axis_handle.draw_artist(axis_handle.patch)
-        axis_handle.draw_artist(line_handle)
-        # figure_handle.canvas.update()
-        axis_handle.relim()
-        axis_handle.autoscale_view()
-        axis_handle.set_aspect('equal','datalim')
+            # Plot the points
+            if len(path_data[agent]) > 2:
+                path_data[agent] = np.array(path_data[agent])
+                plt.plot(path_data[agent][:,0], path_data[agent][:,1],
+                         color = plt.cm.get_cmap('Dark2')(agent/float(self.num_agents)))
+                plt.scatter(float(path_data[agent][-1, 0]), float(path_data[agent][-1, 1]),
+                         color=plt.cm.get_cmap('Dark2')(agent / float(self.num_agents)), marker='o')
+
+        plt.axis('equal')
 
         # # Get positions of all nodes
         # plot_positions = dict()
