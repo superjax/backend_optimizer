@@ -52,6 +52,8 @@ class Backend():
 
         self.graphs_mutex = Lock()
 
+        if not os.path.exists("movie"):
+            os.mkdir("movie")
         os.chdir("movie")
         os.system('rm *.png')
         os.system('rm *.avi')
@@ -92,6 +94,7 @@ class Backend():
             if vehicle_id in self.graphs[id]['connected_agents']:
                 count += 1
                 graph = self.graphs[id]
+                self.graphs_mutex.acquire()
                 graph['graph'].add_edge(from_id, to_id, covariance=covariance,
                                         transform=transform, from_id=from_id, to_id=to_id)
 
@@ -102,6 +105,7 @@ class Backend():
                 from_pose = graph['graph'].node[from_id]['pose']
                 to_pose = self.concatenate_transform(from_pose, transform)
                 graph['graph'].node[to_id]['pose'] = to_pose
+                self.graphs_mutex.release()
 
                 # Prepare this edge for the optimizer
                 out_node = [to_id, to_pose[0], to_pose[1], to_pose[2]]
@@ -113,8 +117,6 @@ class Backend():
         # Optimize
         # self.optimization_counter += 1
         # if self.optimization_counter > self.num_agents * 10:
-        for id in keys:
-            self.update_gtsam(id)
 
     def finish_up(self):
         # update optimizer
@@ -123,14 +125,20 @@ class Backend():
 
 
     def update_gtsam(self, id):
+        if id not in self.graphs:
+            return
+
         graph = self.graphs[id]
         try:
             # Add edges and nodes and run optimization
-            self.optimization_time_array.append([id, len(self.graphs), len(graph['graph'].nodes()), len(graph['graph'].nodes()), graph['optimizer'].add_edge_batch(graph['node_buffer'], graph['edge_buffer'])])
+            self.optimization_time_array.append([id, len(self.graphs), len(graph['graph'].nodes()),
+                                                 len(graph['node_buffer']), len(graph['edge_buffer']),
+                                                 graph['optimizer'].add_edge_batch(graph['node_buffer'],
+                                                                                   graph['edge_buffer'])])
             graph['node_buffer'] = []
             graph['edge_buffer'] = []
             # Run a second optimization step
-            self.optimization_time_array.append([id, len(self.graphs), len(graph['graph'].nodes()), len(graph['graph'].nodes()), graph['optimizer'].optimize()])
+            # self.optimization_time_array.append([id, len(self.graphs), len(graph['graph'].nodes()), graph['optimizer'].optimize()])
 
         except:
             print "something went wrong - error 2"
@@ -285,6 +293,9 @@ class Backend():
         return [dx[0], dx[1], dpsi]
 
     def plot(self):
+        for id in self.graphs.keys():
+            self.update_gtsam(id)
+
         num_subplots = len(self.graphs) + 1
 
         if num_subplots > self.max_subplots:
@@ -333,49 +344,6 @@ class Backend():
 
         # also pickle up the optimization_time array
         pickle.dump(self.optimization_time_array, open('time_array.pkl', 'wb'))
-
-        #
-        #
-        #
-        #
-        # # Plot the combined graph
-        # for i in range(2):
-        #     combined_graph = nx.Graph()
-        #     for id, graph in self.graphs.iteritems():
-        #         combined_graph = nx.compose(combined_graph, graph['graph'])
-        #     self.plot_graph(combined_graph, title='full truth', edge_color='r', truth=1,
-        #                     axis_handle=self.axes[i][0], line_handle=self.lines[i][0][0], figure_handle=self.figs[i])
-        #     self.figs[i].canvas.flush_events()
-        #
-        # names = [' truth', ' optimized']
-        # truth = [1, 0]
-        #
-        # agents = []
-        # if len(self.graphs) > self.max_subplot:
-        #     agents = [[id, len(graph['connected_agents'])] for id, graph in self.graphs.iteritems()]
-        #     agents = sorted(agents, key=itemgetter(1), reverse=True)
-        #     agents = [x[0][0] for x in zip(agents)]
-        # else:
-        #     agents = [id for id, graph in self.graphs.iteritems()]
-        #
-        #
-        # for j in range(2):
-        #     for i in range(self.max_subplots - 1):
-        #         agent = agents[i]
-        #         self.plot_graph(self.graphs[agent]['graph'], title=str(agent) + names[j], edge_color='g', truth=truth[j],
-        #                   axis_handle=self.axes[j][i+1], line_handle=self.lines[j][i+1][0], figure_handle=self.figs[j])
-        #     self.figs[j].canvas.draw()
-        #     debug = 1
-        #
-        #
-        # # Save frames for future movie making
-        # self.figs[0].savefig("movie/truth_" + str(self.frame_number).zfill(4) + ".png")
-        # self.figs[1].savefig("movie/optimized_" + str(self.frame_number).zfill(4) + ".png")
-        # self.frame_number += 1
-        # plt.ioff()
-        #
-        # # also pickle up the optimization_time array
-        # pickle.dump(self.optimization_time_array, open('time_array.pkl', 'wb'))
 
 
     def plot_graph(self, graph, axis_handle, title='default', truth=False):

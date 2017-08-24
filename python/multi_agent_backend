@@ -45,14 +45,14 @@ class ROS_backend():
 
         self.updating_backend = False
 
+        self.plot_count = 0
+
         # start up the spinner
         thread.start_new(self.run, ())
 
         # Render Thread
         while not rospy.is_shutdown():
             self.plot()
-
-
 
     def run(self):
         try:
@@ -92,6 +92,7 @@ class ROS_backend():
             lc = self.lc_queue[i]
             if lc[0] in self.added_nodes and lc[1] in self.added_nodes:
                 self.backend.add_loop_closure(*self.lc_queue.pop(i))
+                self.new_info = True
             else:
                 i += 1
 
@@ -99,6 +100,8 @@ class ROS_backend():
 
     def plot(self):
         if self.new_info:
+            rospy.loginfo("plotting %f", self.plot_count)
+            self.plot_count += 1
             self.backend.plot()
             self.new_info = False
         else:
@@ -132,28 +135,6 @@ class ROS_backend():
         new_lc = [from_id, to_id, transform_SE2, covariance]
         self.lc_queue.append(new_lc)
         self.update_backend()
-
-
-
-
-
-    # def mikey_edge_callback(self, msg):
-    #     debug = 1
-
-
-    # def raph_edge_callback(self, msg):
-
-
-    # def donny_edge_callback(self, msg):
-    #     debug = 1
-
-
-
-
-
-
-
-
 
 
 if __name__ == "__main__":

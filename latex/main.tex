@@ -1,0 +1,63 @@
+\documentclass[article]{IEEEtran}
+\usepackage[margin=1in]{geometry}
+\usepackage[nolists,nomarkers,tablesfirst]{endfloat} % put figures at end
+\usepackage[draft]{hyperref}
+
+% Still required?
+%\usepackage[bf,format=plain]{caption}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{booktabs}
+%\usepackage{rotating}
+\usepackage{graphicx}
+\graphicspath{{fig/}}
+\DeclareGraphicsExtensions{.pdf,.png}
+\usepackage{subcaption}
+\usepackage[compress]{cite}
+% \renewcommand{\citepunct}{], [}
+% \renewcommand{\citedash}{]--[}
+\usepackage[table,xcdraw,usenames,dvipsnames]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,graphs,calc,backgrounds,fit,arrows,patterns,shapes}
+\tikzset{>=stealth}
+\tikzstyle{frame}=[->,thick]
+\tikzstyle{state}=[->,ultra thick,blue!90!black]
+\tikzstyle{measurement}=[->,ultra thick,red!90!black]
+\tikzstyle{inactive}=[black!30]
+\usepackage{amsmath}
+\usepackage{autonum}
+
+
+\begin{document}
+\title{Multi-Agent Mapping with Relative Navigation}
+\author{\IEEEauthorblockN{James Jackson}
+\IEEEauthorblockA{School of Mechanical Engineering\\
+Brigham Young University\\
+Provo, UT 84604\\
+Email: james.s.jackson@byu.edu}}
+
+% make the title area
+\maketitle
+
+
+\begin{abstract}
+  \input{abstract}
+\end{abstract}
+
+
+\IEEEpeerreviewmaketitle
+
+\input{introduction}
+\input{edge_optimization}
+\input{implementation}
+\input{results}
+\input{conclusions}
+
+% \section*{Acknowledgment}
+%
+%
+% The authors would like to thank...
+
+\bibliographystyle{ieeetr}
+\bibliography{library}
+\end{document}

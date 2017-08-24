@@ -1,8 +1,9 @@
 #include <pybind11/pybind11.h>
-  #include <pybind11/stl.h>
+#include <pybind11/stl.h>
 #include <backend_optimizer.h>
 #include <fstream>
 #include <ostream>
+#include <chrono>
 
 namespace py = pybind11;
 using namespace backend_optimizer;
@@ -48,14 +49,14 @@ int BackendOptimizer::new_graph(std::string fixed_node, int id)
 
 double BackendOptimizer::add_edge_batch(py::list nodes, py::list edges)
 {
-//  std::cout << "adding ";
+  //  std::cout << "adding ";
   NonlinearFactorGraph new_graph;
   Values new_initial_estimates;
 
   // convert the nodes
   //  std::cout << "adding nodes \n";
   std::vector<py::list> stl_nodes = nodes.cast<std::vector<py::list>>();
-//  std::cout << stl_nodes.size() << " odometry edges ";
+  //  std::cout << stl_nodes.size() << " odometry edges ";
   for (int i = 0; i < stl_nodes.size(); i++)
   {
     std::string id = stl_nodes[i][0].cast<std::string>();
@@ -102,56 +103,29 @@ double BackendOptimizer::add_edge_batch(py::list nodes, py::list edges)
   // fix the fixed node if we haven't already
   if (!graph_fixed_)
   {
-    try
-    {
-      int fixed_node_index = node_name_to_id_map_[fixed_node_];
-      noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Sigmas(Vector3(0.001, 0.001, 0.001));
-      new_graph.emplace_shared<PriorFactor<Pose2> >(fixed_node_index, Pose2(0, 0, 0), priorNoise);
-      new_initial_estimates.insert(fixed_node_index, Pose2(0, 0, 0));
-      graph_fixed_ = true;
-    }
-    catch(...)
-    {
-      std::cout << "\n\[\033[01;32m\]problem fixing graph\[\033[00m\]\n";
-    }
+    int fixed_node_index = node_name_to_id_map_[fixed_node_];
+    noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Sigmas(Vector3(0.001, 0.001, 0.001));
+    new_graph.emplace_shared<PriorFactor<Pose2> >(fixed_node_index, Pose2(0, 0, 0), priorNoise);
+    new_initial_estimates.insert(fixed_node_index, Pose2(0, 0, 0));
+    graph_fixed_ = true;
   }
 
   // Add the new edge to the graph
-  clock_t start_time = std::clock();
-  try
-  {
-    result_ = optimizer_.update(new_graph, new_initial_estimates);
-  }
-  catch(const IndeterminantLinearSystemException &e)
-  {
-    std::string name = node_id_to_name_map_[e.nearbyVariable()];
-    std::cout << "\n\[\033[01;32m\]problem with node " << name << " in graph " << agent_id_ << "\[\033[00m\] AKA " << e.nearbyVariable() << "\n";
-    Key broken_node_key = e.nearbyVariable();
-    new_graph.print("graph = \n");
-    std::cout << "printing graphs\n";
-    std::ostream stream(nullptr);
-    std::ofstream out_file("/home/ultron/graph_to_add.gv");
-    stream.rdbuf(out_file.rdbuf());
-    new_graph.saveGraph(stream);
-    optimizer_.saveGraph("/home/ultron/broken_graph.gv");
-    throw(e);
-  }
+  std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
+  result_ = optimizer_.update(new_graph, new_initial_estimates);
+  std::chrono::time_point<std::chrono::steady_clock> end = std::chrono::steady_clock::now();
 
-  clock_t time = std::clock() - start_time;
-
-//  std::cout << "took " << ((float)time)/CLOCKS_PER_SEC << " seconds " << std::endl;
-
-  return ((float)time)/CLOCKS_PER_SEC;
+  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }
 
 double BackendOptimizer::add_lc_batch(pybind11::list edges)
 {
   NonlinearFactorGraph new_graph;
-//  std::cout << "adding ";
+  //  std::cout << "adding ";
 
   // extract edges
   std::vector<py::list> stl_edges = edges.cast<std::vector<py::list>>();
-//  std::cout << stl_edges.size() << " loop closures ";
+  //  std::cout << stl_edges.size() << " loop closures ";
   for (int i = 0; i < stl_edges.size(); i++)
   {
     std::string from = stl_edges[i][0].cast<std::string>();
@@ -175,52 +149,24 @@ double BackendOptimizer::add_lc_batch(pybind11::list edges)
     new_graph.emplace_shared<BetweenFactor<Pose2> >(node_name_to_id_map_[from], node_name_to_id_map_[to], Pose2(x, y, z), model);
   }
 
-  // Add the new edges to the graph
-  clock_t start_time = std::clock();
+  std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
   result_ = optimizer_.update(new_graph);
-  clock_t time = std::clock() - start_time;
+  std::chrono::time_point<std::chrono::steady_clock> end = std::chrono::steady_clock::now();
 
-//  std::cout << "took " << ((float)time)/CLOCKS_PER_SEC << " seconds " << std::endl;
-  return ((float)time)/CLOCKS_PER_SEC;
+  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }
 
 double BackendOptimizer::optimize()
 {
-  clock_t start_time = std::clock();
-  try
-  {
-    result_ = optimizer_.update();
-  }
-  catch(const IndeterminantLinearSystemException &e)
-  {
-    std::string name = node_id_to_name_map_[e.nearbyVariable()];
-    std::cout << "\n\[\033[01;32m\]problem with node " << name << "\[\033[00m\] AKA" << e.nearbyVariable() << " in graph " << agent_id_ << "\n";
-    Key broken_node_key = e.nearbyVariable();
-    optimizer_.saveGraph("/home/ultron/broken_graph.gv");
-    throw(e);
-  }
-  clock_t time = std::clock() - start_time;
+  std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
+  result_ = optimizer_.update();
+  std::chrono::time_point<std::chrono::steady_clock> end = std::chrono::steady_clock::now();
 
-//  std::cout << "optimization took " << ((float)time)/CLOCKS_PER_SEC << " seconds " << std::endl;
-
-  return ((float)time)/CLOCKS_PER_SEC;
-  //  std::cout << "optimized " << num_nodes_ << " nodes and " << num_edges_ << " edges " << std::endl;
-  //  result_.print("optimization results:");
+  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }
 
 py::dict BackendOptimizer::get_optimized()
 {
-  //  std::cout << "\n\nname to id map\n\n";
-  //  for(auto elem : node_id_to_name_map_)
-  //  {
-  //     std::cout << elem.first << " " << elem.second << "\n";
-  //  }
-  //  for(auto elem : node_name_to_id_map_)
-  //  {
-  //     std::cout << elem.first << " " << elem.second << "\n";
-  //  }
-  //  optimizer_.print("status");
-
   Values optimized_values = optimizer_.calculateBestEstimate();
 
   py::dict out_dict;
