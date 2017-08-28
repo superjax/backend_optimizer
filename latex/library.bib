@@ -1,6 +1,330 @@
-%===============================
-% Introduction (Uses of MAVs)
+@article{Kim2010a,
+abstract = {This paper describes a new algorithm for cooperative and persistent simultaneous localization and mapping (SLAM) using multiple robots. Recent pose graph representations have proven very successful for single robot mapping and localization. Among these methods, incremental smoothing and mapping (iSAM) gives an exact incremental solution to the SLAM problem by solving a full nonlinear optimization problem in real-time. In this paper, we present a novel extension to iSAM to facilitate online multi-robot mapping based on multiple pose graphs. Our main contribution is a relative formulation of the relationship between multiple pose graphs that avoids the initialization problem and leads to an efficient solution when compared to a completely global formulation. The relative pose graphs are optimized together to provide a globally consistent multi-robot solution. Efficient access to covariances at any time for relative parameters is provided through iSAM, facilitating data association and loop closing. The performance of the technique is illustrated on various data sets including a publicly available multi-robot data set. Further evaluation is performed in a collaborative helicopter and ground robot experiment.},
+author = {Kim, Been and Kaess, Michael and Fletcher, Luke and Leonard, John and Bachrach, Abraham and Roy, Nicholas and Teller, Seth},
+doi = {10.1109/ROBOT.2010.5509154},
+file = {:home/superjax/.local/share/data/Mendeley Ltd./Mendeley Desktop/Downloaded/Kim et al. - 2010 - Multiple relative pose graphs for robust cooperative mapping.pdf:pdf},
+isbn = {9781424450381},
+issn = {10504729},
+journal = {Proceedings - IEEE International Conference on Robotics and Automation},
+pages = {3185--3192},
+title = {{Multiple relative pose graphs for robust cooperative mapping}},
+year = {2010}
+}
 
+@inproceedings{Carlone2015,
+abstract = {Pose graph optimization is the non-convex optimization problem underlying pose-based Simultaneous Localization and Mapping (SLAM). If robot orientations were known, pose graph optimization would be a linear least-squares problem, whose solution can be computed efficiently and reliably. Since rotations are the actual reason why SLAM is a difficult problem, in this work we survey techniques for 3D rotation estimation. Rotation estimation has a rich history in three scientific communities: robotics, computer vision, and control theory. We review relevant contributions across these communities, assess their practical use in the SLAM domain, and benchmark their performance on representative SLAM problems (Fig. 1). We show that the use of rotation estimation to bootstrap iterative pose graph solvers entails significant boost in convergence speed and robustness.},
+author = {Carlone, Luca and Tron, Roberto and Daniilidis, Kostas and Dellaert, Frank},
+booktitle = {2015 IEEE International Conference on Robotics and Automation (ICRA)},
+doi = {10.1109/ICRA.2015.7139836},
+file = {:home/superjax/Downloads/Carlone15icra.pdf:pdf},
+isbn = {978-1-4799-6923-4},
+issn = {10504729},
+month = {may},
+number = {June},
+pages = {4597--4604},
+pmid = {7139836},
+publisher = {IEEE},
+title = {{Initialization techniques for 3D SLAM: A survey on rotation estimation and its use in pose graph optimization}},
+url = {http://ieeexplore.ieee.org/document/7139836/},
+volume = {2015-June},
+year = {2015}
+}
+
+@article{Wang2014,
+abstract = {Robust SLAM methods can allow robots to recover correct maps even in the presence of incorrect loop closures. While these approaches improve robustness to outliers, they are susceptible to getting caught in local minima, a problem which is exacerbated by poor initial estimates. In this paper, we describe a stochastic gradient descent optimization approach that exhibits greater robustness to poor initial estimates. Our approach can either be used as a stand-alone optimization system or in conjunction with existing methods such as Gauss-Newton solvers. Using a combination of synthetic and real-world datasets, we demonstrate that our proposed approach is able to recover correct pose graphs significantly more frequently than other methods when large initialization errors are present.},
+author = {Wang, John and Olson, Edwin},
+doi = {10.1109/ICRA.2014.6907482},
+file = {:home/superjax/Downloads/06907482.pdf:pdf},
+isbn = {978-1-4799-3685-4},
+issn = {10504729},
+journal = {2014 IEEE International Conference on Robotics and Automation (ICRA)},
+keywords = {Convergence,Gauss-Newton solvers,Gaussian processes,Newton method,Noise,Optimization,Robustness,SLAM (robots),Simultaneous localization and mapping,Stochastic processes,gradient methods,graph theory,optimisation,pose graph recovery,robust SLAM methods,robust pose graph optimization,stand-alone optimization system,stochastic gradient descent optimization approach},
+pages = {4284--4289},
+title = {{Robust pose graph optimization using stochastic gradient descent}},
+url = {http://ieeexplore.ieee.org/lpdocs/epic03/wrapper.htm?arnumber=6907482},
+year = {2014}
+}
+
+@article{Agarwal2014,
+abstract = {Non-linear error minimization methods became widespread approaches for solving the simultaneous localization and mapping problem. If the initial guess is far away from the global minimum, converging to the correct solution and not to a local one can be challenging and sometimes even impossible. This paper presents an experimental analysis of dynamic covariance scaling, a recently proposed method for robust optimization of SLAM graphs, in the context of a poor initialization. Our evaluation shows that dynamic covariance scaling is able to mitigate the effects of poor initializations. In contrast to other methods that first aim at finding a good initial guess to seed the optimization, our method is more elegant because it does not require an additional method for initialization. Furthermore, it can robustly handle data association outliers. Experiments performed with real world and simulated datasets show that dynamic covariance scaling outperforms existing methods, both in the presence and absence of data association outliers.},
+author = {Agarwal, Pratik and Grisetti, Giorgio and {Diego Tipaldi}, Gian and Spinello, Luciano and Burgard, Wolfram and Stachniss, Cyrill},
+doi = {10.1109/ICRA.2014.6907383},
+file = {:home/superjax/Downloads/06907383.pdf:pdf},
+isbn = {978-1-4799-3685-4},
+issn = {10504729},
+journal = {Proceedings - IEEE International Conference on Robotics and Automation},
+pages = {3626--3631},
+pmid = {6907383},
+title = {{Experimental analysis of dynamic covariance scaling for robust map optimization under bad initial estimates}},
+year = {2014}
+}
+
+@article{Wheeler2017a,
+  author = {Wheeler, David O. and Koch, Daniel P. and Jackson, James S. and McLain, Timothy W. and Beard, Randal W.},
+  title = {Relative Navigation: A keyframe-based approach for {GPS}-degraded navigation},
+  journal = {IEEE Control Systems Magazine},
+  year = {Under review},
+  note = {Available at \url{http://scholarsarchive.byu.edu/facpub/1961/}}
+}
+
+@article{Barfoot2014,
+abstract = {In this paper, we provide specific and practical approaches to associate uncertainty with {\$}hbox{\{}4{\}} times hbox{\{}4{\}}{\$} transformation matrices, which is a common representation for pose variables in 3-D space. We show constraint-sensitive means of perturbing transformation matrices using their associated exponential-map generators and demonstrate these tools on three simple-yet-important estimation problems: 1) propagating uncertainty through a compound pose change, 2) fusing multiple measurements of a pose (e.g., for use in pose-graph relaxation), and 3) propagating uncertainty on poses (and landmarks) through a nonlinear camera model. The contribution of the paper is the presentation of the theoretical tools, which can be applied in the analysis of many problems involving 3-D pose and point variables.},
+author = {Barfoot, Timothy D. and Furgale, Paul T.},
+doi = {10.1109/TRO.2014.2298059},
+file = {:home/superjax/.local/share/data/Mendeley Ltd./Mendeley Desktop/Downloaded/Barfoot, Furgale - 2014 - Associating uncertainty with three-dimensional poses for use in estimation problems.pdf:pdf},
+isbn = {1552-3098},
+issn = {15523098},
+journal = {IEEE Transactions on Robotics},
+keywords = {Exponential maps,homogeneous points,matrix Lie groups,pose uncertainty,transformation matrices},
+number = {3},
+pages = {679--693},
+title = {{Associating uncertainty with three-dimensional poses for use in estimation problems}},
+volume = {30},
+year = {2014}
+}
+@article{Kaess2008,
+	author = {Kaess, Michael and Ranganathan, Ananth and Dellaert, Frank},
+	journal = tr,
+	number = 6,
+	pages = {1365--1378},
+	title = {{iSAM}: Incremental smoothing and mapping},
+	volume = 24,
+	year = 2008
+}
+
+@book{Bar-Shalom2002,
+	author = {Bar-Shalom, Yaakov and Kirubarajan, Thiagalingam and Li, X.-Rong},
+	title = {Estimation with Applications to Tracking and Navigation},
+	year = 2002,
+	publisher = {John Wiley \& Sons, Inc.},
+	address = {New York},
+}
+
+@inproceedings{Bailey2006Consistency,
+	author = {Bailey, Tim and Nieto, Juan and Guivant, Jose and Stevens, Michael and Nebot, Eduardo},
+	booktitle = iros,
+	pages = {3562--3568},
+	title = {Consistency of the {EKF-SLAM} algorithm},
+	year = 2006
+}
+
+@article{Dellaert2006,
+	author = {Dellaert, F. and Kaess, M.},
+	journal = ijrr,
+	number = 12,
+	pages = {1181--1203},
+	title = {Square Root {SAM}: Simultaneous Localization and Mapping via Square Root Information Smoothing},
+	volume = 25,
+	year = 2006
+}
+
+@article{Kaess2012,
+author = {Kaess, M. and Johannsson, H. and Roberts, R. and Ila, V. and Leonard, J. J. and Dellaert, F.},
+journal = ijrr,
+number = 2,
+pages = {216--235},
+title = {{iSAM2: Incremental smoothing and mapping using the Bayes tree}},
+volume = 31,
+year = 2012
+}
+
+@inproceedings{Kummerle2011,
+author={R. Kummerle and G. Grisetti and H. Strasdat and K. Konolige and W. Burgard},
+	booktitle = icra,
+	pages = {3607--3613},
+	title = {{g2o}: A general framework for graph optimization},
+	year = 2011,
+  month = may
+}
+
+@article{Wheeler2017b,
+author = {Wheeler, David O. and Koch, Daniel P. and Jackson, James S. and Ellingson, Gary J. and Nyholm, Paul W. and McLain, Timothy W. and Beard, Randal W.},
+title = {Relative Navigation of Autonomous {GPS}-Degraded Micro Air Vehicles},
+journal = {J. Field Robotics},
+year = {Submitted},
+note = {Preprint available at \url{http://scholarsarchive.byu.edu/facpub/1962/}}
+}
+
+@article{Koch2017,
+  author = {Koch, Daniel P. and Wheeler, David O. and Beard, Randal W. and McLain, Timothy W. and Brink, Kevin M.},
+  title = {Relative Multiplicative Extended {Kalman} Filter for Observable {GPS}-Denied Navigation},
+  year = 2017,
+  note = {Available at \url{http://scholarsarchive.byu.edu/facpub/1963/}}
+}
+
+@article{Martinelli2012,
+author = {Martinelli, Agostino},
+journal = tr,
+number = {1},
+pages = {44--60},
+title = {Vision and {IMU} Data Fusion : Closed-Form Solutions},
+volume = {28},
+year = 2012
+}
+
+@inproceedings{Jones2007,
+author = {Eagle Jones and Andrea Vedaldi and Stefano Soatto},
+title = {Inertial structure from motion with autocalibration},
+booktitle = {ICCV Workshop on Dynamical Vision},
+year = 2007
+}
+
+@inproceedings{Weiss2012,
+	author = {Weiss, Stephan and Achtelik, Markus W. and Lynen, Simon and Chli, Margarita and Siegwart, Roland},
+	booktitle = icra,
+	pages = {957--964},
+	title = {Real-time onboard visual-inertial state estimation and self-calibration of {MAV}s in unknown environments},
+	year = 2012
+}
+
+
+@article{Chowdary2013,
+abstract = {It is anticipatedthat theMars ScienceLaboratory rover, namedCuriosity,will traverse 10–20 kmon the surface of Mars during its primary mission. In preparation for this traverse, Earth-based tests were performed using Mars weight vehicles. These vehicles were driven over Mars analog bedrock, cohesive soil, and cohesionless sand at various slopes. Vehicle slip was characterized on each of these terrains versus slope for direct upslope driving. Results show that slopes up to 22 degrees are traversable on smooth bedrock and that slopes up to 28 degrees are traversable on some cohesive soils. In cohesionless sand, results show a sharp transition between moderate slip on 10 degree slopes and vehicle embedding at 17 degrees. For cohesionless sand, data are also presented showing the relationship between vehicle slip and wheel sinkage. Side by side testing of the Mars Exploration Rover test vehicle and the Mars Science Laboratory test vehicle show how increased wheel diameter leads to better slope climbing ability in sand for vehicles with nearly identical ground pressure. Lastly, preliminary data from Curiosity's initial driving on Mars are presented and compared to the Earth-based testing, showing good agreement for the driving done during the first 250 Martian days.},
+author = {Chowdhary, Girish and Johnson, Eric N. and Magree, Daniel and Wu, Allen and Shein, Andy},
+doi = {10.1002/rob.21454},
+file = {:home/superjax/Downloads/Chowdhary{\_}et{\_}al-2013-Journal{\_}of{\_}Field{\_}Robotics.pdf:pdf},
+isbn = {9783902661623},
+issn = {15564959},
+journal = {Journal of Field Robotics},
+keywords = {Backstepping,Non-linear control,Path-following},
+month = {may},
+number = {3},
+pages = {415--438},
+title = {{GPS-denied Indoor and Outdoor Monocular Vision Aided Navigation and Control of Unmanned Aircraft}},
+url = {http://doi.wiley.com/10.1002/rob.21454},
+volume = {30},
+year = {2013}
+}
+
+@article{Ahrens2009,
+abstract = {This paper describes the system architecture and core algorithms for a quadrotor helicopter that uses vision data to navigate an unknown, indoor, GPS-denied environment. Without external sensing, an estimation system that relies only on integrating inertial data will have rapidly drifting position estimates. Micro aerial vehicles (MAVs) are stringently weight-constrained, leaving little margin for additional sensors beyond the mission payload. The approach taken in this paper is to introduce an architecture that exploits a common mission payload, namely a video camera, as a dual-use sensor to aid in navigation. Several core algorithms, including a fast environment mapper and a novel heuristic for obstacle avoidance, are also presented. Finally, drift-free hover and obstacle avoidance flight tests in a controlled environment are presented and analyzed.},
+author = {Ahrens, Spencer and Levine, Daniel and Andrews, Gregory and How, Jonathan P.},
+doi = {10.1109/ROBOT.2009.5152680},
+file = {:home/superjax/Downloads/05152680.pdf:pdf},
+isbn = {9781424427895},
+issn = {10504729},
+journal = {Proceedings - IEEE International Conference on Robotics and Automation},
+pages = {2643--2648},
+title = {{Vision-based guidance and control of a hovering vehicle in unknown, gps-denied environments}},
+year = {2009}
+}
+
+@inproceedings{Sharma2008,
+abstract = {Cooperative missions for Miniature Air Vehicles (MAVs) require accurate position, velocity, and attitude estimates for all MAVs within the group for its successful completion. This paper details a cooperative methodology for MAV navigation in times of Global Positioning System (GPS) outages or in GPS denied areas. In this method, each MAV estimates position, attitude, and velocity of all MAVs in its sensor range, including itself. Each MAV collects the IMU measurements from each of the neighboring MAVs and fuses these measurements with relative range and bearing measurements taken of every MAV in its sensor range. This collected data is then used to estimate navigation states using an Extended Kalman Filter (EKF). Simulation results presented in this paper demonstrate that this Cooperative Navigation System (CNS) can effectively constrain pose estimation drift in the absence of GPS. We also performed the nonlinear observability analysis to support the improved performance of CNS.},
+author = {Sharma, Rajnikant and Taylor, Clark},
+booktitle = {2008 IEEE International Conference on Multisensor Fusion and Integration for Intelligent Systems},
+doi = {10.1109/MFI.2008.4648041},
+file = {:home/superjax/Downloads/04648041.pdf:pdf},
+isbn = {978-1-4244-2143-5},
+month = {aug},
+number = {4},
+pages = {481--486},
+publisher = {IEEE},
+title = {{Cooperative navigation of MAVs In GPS denied areas}},
+url = {http://ieeexplore.ieee.org/document/4648041/},
+year = {2008}
+}
+
+@article{Achtelik2012,
+abstract = {The SFly project is an EU-funded project, with the goal to create a swarm of autonomous vision controlled micro aerial vehicles. The mission in mind is that a swarm of MAV's autonomously maps out an unknown environment, computes optimal surveillance positions and places the MAV's there and then locates radio beacons in this environment. The scope of the work includes contributions on multiple different levels ranging from theoretical foundations to hardware design and embedded programming. One of the contributions is the development of a new MAV, a hexacopter, equipped with enough processing power for onboard computer vision. A major contribution is the development of monocular visual SLAM that runs in real-time onboard of the MAV. The visual SLAM results are fused with IMU measurements and are used to stabilize and control the MAV. This enables autonomous flight of the MAV, without the need of a data link to a ground station. Within this scope novel analytical solutions for fusing IMU and vision measurements have been derived. In addition to the realtime local SLAM, an offline dense mapping process has been developed. For this the MAV's are equipped with a payload of a stereo camera system. The dense environment map is used to compute optimal surveillance positions for a swarm of MAV's. For this an optimiziation technique based on cognitive adaptive optimization has been developed. Finally, the MAV's have been equipped with radio transceivers and a method has been developed to locate radio beacons in the observed environment.},
+author = {Achtelik, Markus and Achtelik, Michael and Brunet, Yorick and Chli, Margarita and Chatzichristofis, Savvas and Decotignie, Jean Dominique and Doth, Klaus Michael and Fraundorfer, Friedrich and Kneip, Laurent and Gurdan, Daniel and Heng, Lionel and Kosmatopoulos, Elias and Doitsidis, Lefteris and Lee, Gim Hee and Lynen, Simon and Martinelli, Agostino and Meier, Lorenz and Pollefeys, Marc and Piguet, Damien and Renzaglia, Alessandro and Scaramuzza, Davide and Siegwart, Roland and Stumpf, Jan and Tanskanen, Petri and Troiani, Chiara and Weiss, Stephan},
+doi = {10.1109/IROS.2012.6386281},
+file = {:home/superjax/.local/share/data/Mendeley Ltd./Mendeley Desktop/Downloaded/Achtelik et al. - 2012 - SFly Swarm of micro flying robots.pdf:pdf},
+isbn = {9781467317375},
+issn = {21530858},
+journal = {IEEE International Conference on Intelligent Robots and Systems},
+pages = {2649--2650},
+title = {{SFly: Swarm of micro flying robots}},
+year = {2012}
+}
+
+@inproceedings{Achtelik2009,
+abstract = {This paper presents our solution for enabling a quadrotor helicopter to autonomously navigate unstructured and unknown indoor environments. We compare two sensor suites, specifically a laser rangefinder and a stereo camera. Laser and camera sensors are both well-suited for recovering the helicopter's relative motion and velocity. Because they use different cues from the environment, each sensor has its own set of advantages and limitations that are complimentary to the other sensor. Our eventual goal is to integrate both sensors on-board a single helicopter platform, leading to the development of an autonomous helicopter system that is robust to generic indoor environmental conditions. In this paper, we present results in this direction, describing the key components for autonomous navigation using either of the two sensors separately.},
+author = {Achtelik, Markus and Bachrach, Abraham and He, Ruijie and Prentice, Samuel and Roy, Nicholas},
+booktitle = {SPIE Defense, Security, and Sensing},
+doi = {10.1117/12.819082},
+editor = {Gerhart, Grant R. and Gage, Douglas W. and Shoemaker, Charles M.},
+file = {:home/superjax/Downloads/52660.pdf:pdf},
+isbn = {http://hdl.handle.net/1721.1/52660},
+issn = {0277-786X},
+keywords = {Autonomous navigation,laser odometry,unmanned aerial vehicles,visual odometry},
+month = {may},
+pages = {733219},
+title = {{Stereo vision and laser odometry for autonomous helicopters in GPS-denied indoor environments}},
+url = {http://proceedings.spiedigitallibrary.org/proceeding.aspx?doi=10.1117/12.819082},
+year = {2009}
+}
+
+@inproceedings{Bachrach2010a,
+abstract = {This video highlights our system that enables a Micro Aerial Vehicle (MAV) to autonomously explore and map unstructured and unknown GPS-denied environments. While mapping and exploration solutions are now well-established for ground vehicles, air vehicles face unique challenges which have hindered the development of similar capabilities. Although there has been recent progress toward sensing, control, and navigation techniques for GPS-denied flight, there have been few demonstrations of stable, goal-directed flight in real-world environments. Our system leverages a multi-level sensing and control hierarchy that matches the computational complexity of the component algorithms with the real-time needs of a MAV to achieve autonomy in unconstrained environments.},
+annote = {MIT
+
+Use a Laser-Scanner and Obstacle Map to navigate},
+author = {Bachrach, Abraham and de Winter, Anton and Hemann, Garrett and Prentice, Samuel and Roy, Nicholas},
+booktitle = {2010 IEEE International Conference on Robotics and Automation},
+doi = {10.1109/ROBOT.2010.5509990},
+file = {:home/superjax/.local/share/data/Mendeley Ltd./Mendeley Desktop/Downloaded/Bachrach et al. - 2010 - RANGE - robust autonomous navigation in GPS-denied environments.pdf:pdf},
+isbn = {978-1-4244-5038-1},
+issn = {1050-4729},
+keywords = {Cameras,GPS-Denied Indoor/Outdoor Autonomous SLAM Laser Sc,GPS-denied environments,Global Positioning System,Helicopters,Indoor environments,Mobile robots,Navigation,RANGE,Remotely operated vehicles,Robot sensing systems,Robot vision systems,Robustness,Simultaneous localization and mapping,air vehicles,aircraft control,exploration solutions,goal-directed flight,ground vehicles,mapping solutions,micro aerial vehicle,robust autonomous navigation,video highlights},
+mendeley-tags = {GPS-Denied Indoor/Outdoor Autonomous SLAM Laser Sc},
+month = {may},
+pages = {1096--1097},
+publisher = {IEEE},
+shorttitle = {Robotics and Automation (ICRA), 2010 IEEE Internat},
+title = {{RANGE - robust autonomous navigation in GPS-denied environments}},
+url = {http://ieeexplore.ieee.org/lpdocs/epic03/wrapper.htm?arnumber=5509990},
+year = {2010}
+}
+
+@article{Lawson2015,
+abstract = {This report aims to demonstrate the feasibility of building a global 3-D map from multiple UAV robots in a GPS-denied, indoor environment. Presented are the design of each robot and the reasoning behind choosing its hardware and software components, the process in which a single robot obtains a individual 3-D map entirely onboard, and lastly how the mapping concept is extended to multiple robotic agents to form a global 3-D map using a centralized server. In the latter section, this report focuses on two algorithms, Online Mapping and Map Fusion, developed to facilitate the cooperative approach. A limited selection of experiments and test results are also presented to demonstrate application of these algorithms in a real-world setting},
+author = {Lawson, Andrew Erik},
+file = {:home/superjax/Downloads/Cooperative 3-D Map Generation Using Multiple UAVs.pdf:pdf},
+keywords = {Cooperative 3-D Map Generation},
+title = {{Cooperative 3-D Map Generation Using Multiple UAVs}},
+year = {2015}
+}
+
+@inproceedings{Loianno2015,
+abstract = {The fusion of IMU and RGB-D sensors presents an interesting combination of information to achieve autonomous localization and mapping using robotic platforms such as ground robots and flying vehicles. In this paper, we present a software framework for cooperative localization and map- ping while simultaneously using multiple aerial platforms. We employ a monocular visual odometry algorithm to solve the localization task, where the depth data flow associated to the RGB image is used to estimate the scale factor associated with the visual information. The current framework enables autonomous onboard control of each vehicle with cooperative localization and mapping. We present a methodology that provides both a sparse map generated by the monocular SLAM and a multiple resolution dense map generated by the associated depth. The localization algorithm and both 3D mapping algorithms work in parallel improving the system real- time reliability. We present experimental results to show the effectiveness of the proposed approach using two quadrotors platforms.},
+author = {Loianno, Giuseppe and Thomas, Justin and Kumar, Vijay},
+booktitle = {2015 IEEE International Conference on Robotics and Automation (ICRA)},
+doi = {10.1109/ICRA.2015.7139761},
+file = {:home/superjax/.local/share/data/Mendeley Ltd./Mendeley Desktop/Downloaded/Loianno, Thomas, Kumar - 2015 - Cooperative Localization and Mapping of MAVs using RGB-D Sensors.pdf:pdf},
+isbn = {978-1-4799-6923-4},
+issn = {10504729},
+month = {may},
+pages = {4021--4028},
+publisher = {IEEE},
+title = {{Cooperative localization and mapping of MAVs using RGB-D sensors}},
+url = {http://ieeexplore.ieee.org/document/7139761/},
+year = {2015}
+}
+
+@incollection{Cristofaro2012,
+abstract = {This paper introduces a new approach to the problem of simultaneously localizing a team of micro aerial vehicles (MAV) equipped with inertial sensors able to monitor their motion and with exteroceptive sensors. The method estimates a delayed state containing the trajectories of all the MAVs. The estimation is based on an Extended Information Filter whose implementation is distributed over the team members. The paper introduces two contributions. The former is a trick which allows exploiting the information contained in the inertial sensor data in a distributed manner. The latter is the use of a projection filter which allows exploiting the information contained in the geometrical constraints which arise as soon as the MAV orientations are characterized by unitary quaternions. The performance of the proposed strategy is evaluated with synthetic data. In particular, the benefit of the previous two contributions is pointed out.},
+author = {Cristofaro, Andrea and Renzaglia, Alessandro and Martinelli, Agostino},
+booktitle = {Springer Tracts in Advanced Robotics},
+doi = {10.1007/978-3-642-32723-0_10},
+isbn = {9783642327223},
+issn = {16107438},
+pages = {133--146},
+title = {{Distributed Information Filters for MAV Cooperative Localization}},
+url = {http://link.springer.com/10.1007/978-3-642-32723-0{\_}10},
+volume = {83 STAR},
+year = {2013}
+}
+@article{Adams2011,
+abstract = {The concept of employing unmanned aerial vehicles (UAVs) to acquire imagery for disaster research and management has progressed into actual implementation in recent years. UAV usage in d isaster assessment , response and management is an active are a of research. UAVs have been utilized following ecological, meteor ological, geological, hydrological and human - induced disasters. The flexibility, safety, ease of operation , and relatively low - cost of ownership and operation facilitate UAV implementation in disaster sit uations. This paper provides a review of recent utilization of UAVs for imagery collection for disaster monitoring and management.},
+author = {Adams, Sm M and Friedland, Cj J},
+journal = {9th International Workshop on Remote Sensing for Disaster Response},
+keywords = {disaster,disaster assessment,disaster monitoring,uavs,unmanned aerial vehicles},
+number = {January 2011},
+title = {{A Survey of Unmanned Aerial Vehicle (UAV) Usage for Imagery Collection in Disaster Research and Management}},
+url = {https://blume.stanford.edu/sites/default/files/RS{\_}Adams{\_}Survey{\_}paper{\_}0.pdf},
+year = {2011}
+}
 @article{Ham2016,
 abstract = {Over the past few years, the application of camera-equipped Unmanned Aerial Vehicles (UAVs) for visually monitoring construction and operation of buildings, bridges, and other types of civil infrastructure systems has exponentially grown. These platforms can frequently survey construction sites, monitor work-in-progress, create documents for safety, and inspect existing structures, particularly for hard-to-reach areas. The purpose of this paper is to provide a concise review of the most recent methods that streamline collection, analysis, visualization, and communication of the visual data captured from these platforms, with and without using Building Information Models (BIM) as {\textless}Emphasis Type="Italic"{\textgreater}a priori{\textless}/Emphasis{\textgreater} information. Specifically, the most relevant works from Civil Engineering, Computer Vision, and Robotics communities are presented and compared in terms of their potential to lead to automatic construction monitoring and civil infrastructure condition assessment.},
 author = {Ham, Youngjib and Han, Kevin K. and Lin, Jacob J and Golparvar-Fard, Mani},
@@ -18,20 +342,6 @@ url = {http://viejournal.springeropen.com/articles/10.1186/s40327-015-0029-z},
 volume = {4},
 year = {2016}
 }
-@article{Metni2007,
-abstract = {This paper describes the dynamics of an unmanned aerial vehicle (UAV) for monitoring of structures and maintenance of bridges. It presents a novel control law based on computer vision for quasi-stationary flights above a planar target. The first part of the UAV's mission is the navigation from an initial position to a final position in an unknown 3D environment. The new control law uses the homography matrix computed from the information obtained from the vision system. The control scheme will be derived with backstepping techniques. In order to keep the camera's field of view, the control law uses saturation functions for bounding the UAV orientation and limiting it to very small values. ?? 2007 Elsevier B.V. All rights reserved.},
-author = {Metni, Najib and Hamel, Tarek},
-doi = {10.1016/j.autcon.2006.12.010},
-file = {:home/superjax/Downloads/0a342fa5507e12f69d992a0243fa92c85469.pdf:pdf},
-issn = {09265805},
-journal = {Automation in Construction},
-keywords = {Automation,Bridge inspection,Unmanned aerial vehicles,Visual servoing},
-number = {1},
-pages = {3--10},
-title = {{A UAV for bridge inspection: Visual servoing control law with orientation limits}},
-volume = {17},
-year = {2007}
-}
 @article{Steich2016,
 abstract = {— We present an aerial robotic platform for remote tree cavity inspection, based on a hexacopter Micro-Aerial vehicle (MAV) equipped with a dexterous manipulator. The goal is to make the inspection process safer and more efficient and facilitate data collection about tree cavities, which are important for the conservation of biodiversity in forest ecosystems. This work focuses on two key enabling technologies, namely a vision-based cavity detection system and strategies for high level control of the MAV and manipulator. The results of both simulation and real-world experiments are discussed at the end of the paper and demonstrate the effectiveness of our approach.},
 author = {Steich, Kelly and Kamel, Mina and Beardsley, Paul and Obrist, Martin K and Siegwart, Roland and Lachat, Thibault},
@@ -40,17 +350,6 @@ isbn = {9781509037612},
 pages = {4856--4862},
 title = {{Tree Cavity Inspection Using Aerial Robots}},
 year = {2016}
-}
-@article{Adams2011,
-abstract = {The concept of employing unmanned aerial vehicles (UAVs) to acquire imagery for disaster research and management has progressed into actual implementation in recent years. UAV usage in d isaster assessment , response and management is an active are a of research. UAVs have been utilized following ecological, meteor ological, geological, hydrological and human - induced disasters. The flexibility, safety, ease of operation , and relatively low - cost of ownership and operation facilitate UAV implementation in disaster sit uations. This paper provides a review of recent utilization of UAVs for imagery collection for disaster monitoring and management.},
-author = {Adams, Sm M and Friedland, Cj J},
-file = {:home/superjax/Downloads/A{\_}Survey{\_}of{\_}Unmanned{\_}Aerial{\_}Vehicle{\_}UAV{\_}Usage{\_}for{\_}.pdf:pdf},
-journal = {9th International Workshop on Remote Sensing for Disaster Response},
-keywords = {disaster,disaster assessment,disaster monitoring,uavs,unmanned aerial vehicles},
-number = {January 2011},
-title = {{A Survey of Unmanned Aerial Vehicle (UAV) Usage for Imagery Collection in Disaster Research and Management}},
-url = {https://blume.stanford.edu/sites/default/files/RS{\_}Adams{\_}Survey{\_}paper{\_}0.pdf},
-year = {2011}
 }
 @article{Remondino2011,
 abstract = {UAV platforms are nowadays a valuable source of data for inspection, surveillance, mapping and 3D modeling issues. New applications in the short- and close-range domain are introduced, being the UAVs a low-cost alternatives to the classical manned aerial photogrammetry. Rotary or fixed wing UAVs, capable of performing the photogrammetric data acquisition with amateur or SLR digital cameras, can fly in manual, semi-automated and autonomous modes. With a typical photogrammetric pipeline, 3D results like DSM/DTM, contour lines, textured 3D models, vector data, etc. can be produced, in a reasonable automated way. The paper reports the latest developments of UAV image processing methods for photogrammetric applications, mapping and 3D modeling issues. Automation is nowadays necessary and feasible at the image orientation, DSM generation and orthophoto production stages, while accurate feature extraction is still an interactive procedure. New perspectives are also addressed.},
