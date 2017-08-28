@@ -1,9 +1,15 @@
 % !TEX root=main.tex
 
 \section{Introduction}
-
 % Introduce the topic of multi-agent MAV networks
+A Miniature Aerial Vehicles (MAVs) are becoming increasingly stable and capable agents. They have been applied in military, private and commercial enterprises in situations such as infrastructure inspection\cite{Steich2016, Ham2016}, 3D-mapping~\cite{Remondino2011}, and disaster relief\cite{Adams2011} among others.
+
+% Talk about cooperative SLAM
+As MAVs grow increasingly capable, it has become more reasonable to consider using large number of MAVs in cooperative frameworks. Many of these applications require autonomous operation in GPS-denied or GPS-degraded environments where only relative measurements to landmarks are available to provide position feedback for control and estimation.  The problem becomes further complicated as these agents must also communicate their own observations to each other to build a combined map of the environment, solve for the relative poses of the agents to one another or both, or the cooperative SLAM problem.
+
 % Introduce Pose Graph optimization
+While cooperative SLAM has been most extensively researched in ground robots, there have been a few notable examples of cooperative SLAM on MAVs in recent literature [CITE, CITE, CITE].  In addition, there have been works which are marked by efforts to reduce computational requirements to perform SLAM on computationally-constrained MAV platforms with strict size, weight, and power (SWaP) requirements.  One common approach is to simplify the problem using an extended Kalman filter (EKF) to represent periodically saved poses in a pose graph map.
+
 % Introduce edge-based optimization
 % Introduce filter-based pose-graph SLAM
 % Introduce relative navigation framework

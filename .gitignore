@@ -9,4 +9,5 @@
 *.log
 *.synctex.gz
 *.pdf
-
+*.bbl
+*.blg
