@@ -1,42 +1,36 @@
-\documentclass[article]{IEEEtran}
-\usepackage[margin=1in]{geometry}
-\usepackage[nolists,nomarkers,tablesfirst]{endfloat} % put figures at end
-\usepackage[draft]{hyperref}
-
-% Still required?
-%\usepackage[bf,format=plain]{caption}
-\usepackage[T1]{fontenc}
-\usepackage{lmodern}
-\usepackage{booktabs}
-%\usepackage{rotating}
-\usepackage{graphicx}
-\graphicspath{{fig/}}
-\DeclareGraphicsExtensions{.pdf,.png}
-\usepackage{subcaption}
-\usepackage[compress]{cite}
-% \renewcommand{\citepunct}{], [}
-% \renewcommand{\citedash}{]--[}
-\usepackage[table,xcdraw,usenames,dvipsnames]{xcolor}
+\documentclass{article}
+\usepackage {anysize}\marginsize {1.25in}{1.25in}{1.0in}{1.0in}
+\usepackage{setspace}
 \usepackage{tikz}
-\usetikzlibrary{positioning,graphs,calc,backgrounds,fit,arrows,patterns,shapes}
-\tikzset{>=stealth}
-\tikzstyle{frame}=[->,thick]
-\tikzstyle{state}=[->,ultra thick,blue!90!black]
-\tikzstyle{measurement}=[->,ultra thick,red!90!black]
-\tikzstyle{inactive}=[black!30]
 \usepackage{amsmath}
-\usepackage{autonum}
+\usepackage{floatrow}
+\usepackage{wrapfig}
+\usepackage{pgfplots}
+\usepackage{hyperref}
+\usepackage{amsfonts}
+\usepackage[at]{easylist}
 
+%----------------------------------------------------------------------
+\newcommand{\e}{\mathbf{z}}
+\newcommand{\emeas}{\bar{\mathbf{z}}}
+\newcommand{\eest}{\hat{\mathbf{z}}}
+\newcommand{\eerror}{\tilde{\mathbf{z}}}
+\newcommand{\econcat}{\breve{\mathbf{z}}}
+\newcommand{\ol}{\mathcal{O_L}}
+\newcommand{\xhat}{\hat{\mathbf{x}}}
+\newcommand{\zhat}{\hat{\mathbf{z}}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\Iaz}{\underline{\mathbf{I}}_{az}}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+%----------------------------------------------------------------------
+
+
+\title{Multi-Agent Mapping with Relative Navigation}
+\author{James Jackson}
+\author{David Wheeler}
 
 \begin{document}
-\title{Multi-Agent Mapping with Relative Navigation}
-\author{\IEEEauthorblockN{James Jackson}
-\IEEEauthorblockA{School of Mechanical Engineering\\
-Brigham Young University\\
-Provo, UT 84602\\
-Email: james.s.jackson@byu.edu}}
-
-% make the title area
 \maketitle
 
 
@@ -44,14 +38,15 @@ Email: james.s.jackson@byu.edu}}
   \input{abstract}
 \end{abstract}
 
-
-\IEEEpeerreviewmaketitle
+\begin{spacing}{1.5}
 
 \input{introduction}
 \input{edge_optimization}
 \input{implementation}
 \input{results}
 \input{conclusions}
+
+\end{spacing}
 
 % \section*{Acknowledgment}
 %
