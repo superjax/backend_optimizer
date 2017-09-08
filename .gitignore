@@ -11,3 +11,8 @@
 *.pdf
 *.bbl
 *.blg
+*.lyx~
+*.emergency
+*.lyx#
+*.idea/*
+*.swp

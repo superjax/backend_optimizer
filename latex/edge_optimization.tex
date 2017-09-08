@@ -67,7 +67,13 @@ The process then assumes the following steps:
 
 \end{enumerate}
 
-Global pose optimization solves the system by projecting onto the Cartesian coordinate frame with respect to a single pose. When only relative information is available, the initial global pose estimates can be arbitrarily far from their true position. The iterative nature of the Newton method works ideally when close to the solution, but can converge on a local minimum otherwise.
+Global pose optimization solves the system by projecting onto the Cartesian coordinate frame with respect to a privileged coordinate frame. When only relative information is available, the initial global pose estimates can be arbitrarily far from their true position in this frame. The iterative nature of the Newton method works ideally when close to the solution, but can converge on a local minimum otherwise.  Figure~\ref{fig:g2o_divergence} illustrates results of global pose optimization on a hardware experiment with a multirotor with both relative odometry measurements and global GPS measurements which was initialized with a 180$^\circ$ initial heading error.
+
+\begin{figure}
+  \includegraphics[width=0.3\textwidth]{figures/g2o_divergence.jpg}
+  \caption{Divergent behavior observed in global pose optimization due to poor initialization}
+  \label{fig:g2o_divergence}
+\end{figure}
 
 
 % describe mathematically edge optimization
@@ -79,7 +85,13 @@ Instead of optimizing over poses, we propose to optimize directly over relative 
   \label{eqn:relative_opt}
 \end{align}
 
-In contrast to Equation \ref*{eqn:global_opt}, it becomes clear that global vertex positions are never introduced. Rather, we update the original edge estimates directly. Assuming our incoming odometry measurements are zero-mean, setting $\eest_0 = \emeas$ will be a good initial guess.
+In contrast to Equation \ref*{eqn:global_opt}, it becomes clear that global vertex positions are never introduced. Rather, we update the original edge estimates directly. Assuming our incoming odometry measurements are zero-mean, setting $\eest_0 = \emeas$ will be a good initial guess.  Additionally, keeping the optimization in the measurement space means that linearization errors should in general be smaller.  Figure~\ref{fig:linearization} illustrates this graphically.
+
+\begin{figure}
+  \includegraphics[width=0.7\textwidth]{figures/linearization.jpg}
+  \caption{Optimizing over relative edge constraints as oppposed to global pose prevents optimization over uncertainty which has been compounded over a chain of odometry edges.  This reduces the magnitude of corrections to edge measurements and also reduces linearization errors.  Note the size of $\Delta\textbf{x}_1$ in the global update vs the incremental edge updates $\Delta \e_{ij}$.  Also note the size of the uncertainty about $\textbf{x}_1$ vs the uncertainty estimate about each edge $\e_{ij}$.  Because the uncertainty estimates are by nature much smaller for edges, linearization errors are typically smaller.}
+  \label{fig:linearization}
+\end{figure}
 
 We wish to find the optimal update $\Delta\e^*$ to our initial edge estimate. Letting $\eest^+ = \eest + \Delta\e$ and $\eest_{a-z}^+ = h(\eest_{a-z},\Delta\e)$ we see
 \begin{align*}
@@ -173,7 +185,7 @@ With this approximation, Equation \ref{eqn:opt} simplifies to
 
 \subsection{Relative Edge Optimization in $SE(2)$}
 
-Take the example of a 3 DoF robot which follows the standard unicycle model, where edges are defined as $\e_i = \left[\begin{array}{ccc} f_i & r_i & \theta_i \end{array}\right]^\top$ where $f$ and $r$ represent forward and right motion and $\theta$ represents a change in bearing. In this case translational motion is coupled with heading. A series of edges can be represented as a series of transformation matrices as follows:
+Take the example of a 3 DoF robot which follows the standard unicycle model, where edges are defined as $\e_i = \left[\begin{array}{ccc} f_i & r_i & \theta_i \end{array}\right]^\top$ where $f$ and $r$ represent forward and right motion and $\theta$ represents a change in bearing. In this case translational motion is coupled with heading. Let us first consider the simple case of a single loop closure after a string of edges, which could be described graphically as shown in~\ref{fig:pose_graph}.  In this case, the series of edges can be represented as a series of transformation matrices as follows:
 
 \begin{align*}
 	h(\eest_{a-z},\Delta\e) =  \left[\begin{array}{c}
@@ -238,7 +250,54 @@ is a rotation matrix, and
   \left[\begin{array}{c}
   f_i \\ r_i
   \end{array}\right]\right).
-\end{align*}.
+\end{align*}
+
+is the result of transforming the translation part of the edge by the appropriate rotation.
+
+\pagebreak
+
+\begin{algorithm}[H]
+  \caption{Jacobian Calculation for a cycle without reversed edges}\label{algo:non_reversed}
+  \begin{algorithmic}[1]
+    \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{1,2}} = 1$
+    \For{$\e_{ij} \in \mathcal{L}$}
+      \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{ij}} = \prod_{\{m,n\} < \{i,j\}} R_{m,n}$
+    \EndFor
+    \For{$\e_{ij} \in \mathcal{L}$}
+      \State $\dfrac{\partial \Delta t_{a-z}}{\partial \theta_{ij}} = \sum_{\{m,n\} >= \{i,j\}} \dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{mn}} \Delta t_{mn}$
+      \State $\dfrac{\partial \theta_{a-z}}{\partial \theta_{ij}} = 1$
+      \State $\dfrac{\partial \Delta t_{a-z}}{\partial \theta_{ij}} = \textbf{0}$
+    \EndFor
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+  \caption{Jacobian Calculation for a pose graph cycle with reversed edges}\label{algo:reversed}
+  \begin{algorithmic}[1]
+    \If{ dir$\left( \e_{10} \right) < 0$ }
+      \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{1,2}} = -R_{12}$
+    \Else
+      \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{1,2}} = 1$
+    \EndIf
+    \For{$\e_{ij} \in \mathcal{L}$}
+      \If{ dir$\left( \e_{ij} \right) > 0$ }
+        \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{ij}} = \prod_{\{m,n\} < \{i,j\}} R_{m,n}$
+      \Else
+        \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{ij}} = -\prod_{\{m,n\} \leq \{i,j\}} R_{m,n}$
+      \EndIf
+    \EndFor
+    \For{$\e_{ij} \in \mathcal{L}$}
+      \If{ dir$\left( \e_{ij} \right) > 0$ }
+        \State $\dfrac{\partial \Delta t_{a-z}}{\partial \theta_{ij}} = \sum_{\{m,n\} > \{i,j\}} \dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{mn}} \Delta t_{mn}$
+      \Else
+        \State $\dfrac{\partial \Delta t_{a-z}}{\partial \theta_{ij}} =
+        \sum_{\{m,n\} \geq \{i,j\}} -\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{mn}} \Delta t_{mn}$
+      \EndIf
+      \State $\dfrac{\partial \theta_{a-z}}{\partial \theta_{ij}} = $dir$\left( \e_{ij} \right)$
+      \State $\dfrac{\partial \Delta t_{a-z}}{\partial \theta_{ij}} = \textbf{0}$
+    \EndFor
+  \end{algorithmic}
+\end{algorithm}
 
 % show that they are mathematically equivalent
 % describe differences (pros/cons)
