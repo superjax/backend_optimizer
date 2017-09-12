@@ -1,45 +1,134 @@
 import numpy as np
 import scipy.sparse
 import scipy.linalg
+import sys
 
 class REO():
-    def __init__(self):
-        debug = 1
+    def concatenate_transform(self, T1, T2):
+        cs = np.cos(T1[2])
+        ss = np.sin(T1[2])
+        x = T1[0] + T2[0] * cs - T2[1] * ss
+        y = T1[1] + T2[0] * ss + T2[1] * cs
+        psi = T1[2] + T2[2]
+        return [x, y, psi]
 
-    def optimize(self, z_bar, dirs, Omegas, lc, lc_omega, lc_dir, iters):
+    def invert_transform(self, T):
+        cs = np.cos(T[2])
+        ss = np.sin(T[2])
+        dx = -(T[0] * cs + T[1] * ss)
+        dy = -(- T[0] * ss + T[1] * cs)
+        psi = -T[2]
+        return [dx, dy, psi]
+
+    def invert_edges(self, x, dirs, indexes):
+        for index in indexes:
+            x[:, index] = self.invert_transform(x[:, index])
+            dirs[index] *= -1.0
+
+    # def optimize(self, z_bar, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, iters, epsilon):
+    #     edges = z_bar.copy()
+    #
+    #     occurrances = []
+    #     for i in range(z_bar.shape[1]):
+    #         occurrances.append(sum(x.count(i) for x in cycles))
+    #     W = np.diag(occurrances)/float(max(occurrances))
+    #     for i in range(len(cycles)):
+    #         this_edges = edges[:,cycles[i]]
+    #         this_edge_dirs = dirs[cycles[i]]
+    #         this_edge_Omegas = [Omegas[j] for j in cycles[i]]
+    #         this_lc = lcs[:, i, None]
+    #         this_lc_dir = lc_dirs[i]
+    #         this_lc_omega = lc_omegas[i]
+    #
+    #         updated_edges, error = self.optimize_cycle(this_edges, this_edge_dirs, this_edge_Omegas, this_lc,
+    #                                                    this_lc_omega, this_lc_dir, 100, epsilon)
+    #
+    #         # only update if it's a helpful update
+    #         if error < epsilon:
+    #             # Weight the amount of change with the number of occurrences
+    #             edge_update = np.zeros(edges.shape)
+    #             edge_update[:,cycles[i]] = updated_edges
+    #             edge_update = edge_update.dot(W)
+    #             # update with the results of this optimization
+    #             edges -= edge_update
+    #     return edges
+
+    def optimize(self, z_bar, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, iters, epsilon):
 
         # create giant combined omega
         Omega = scipy.sparse.block_diag(Omegas)
 
         # Initialize z_hat
-        z_hat = z_bar
+        z_hat = z_bar.copy()
+
+        for i in range(len(lc_dirs)):
+            if lc_dirs[i] < 0:
+                lcs[i] = self.invert_transform(lcs[i])
+
+        diff = sys.float_info.max
+        iter = 0
+        while iter < iters and diff > epsilon:
+
+            # How far have we deviated from our original measurements (be sure to handle pi-wrap)
+            delta = z_hat - z_bar
+            # for psi in delta[2,:]:
+            #     if psi > np.pi:
+            #         psi -= 2.0*np.pi
+            #     elif psi <= -np.pi:
+            #         psi += 2.0*np.pi
 
 
-        for i in range(iters):
-            # Find Jacobian of cycle at this linearization point
-            H = self.calc_jacobian_of_string_with_reversed_edges(z_hat, dirs)
+            b = Omega.dot(delta.flatten())
+            A = Omega
 
-            # Calculate left side
-            A = Omega + H.T.dot(lc_omega).dot(H)
+            # Build up the loop closure part of the cost function
+            for i in range(len(cycles)):
+                this_edges = z_hat[:, cycles[i]]
+                this_dirs = dirs[cycles[i]]
+                this_lc = lcs[:, i, None]
+                this_lc_omega = lc_omegas[i]
 
-            # concatenate edges
-            z_long_way = self.compound_edges(z_hat, dirs)
+                # Create the mask to put the edges in their place when we are done
+                mask = np.zeros((3*z_hat.shape[1], 3*this_edges.shape[1]))
+                for j in range(len(cycles[i])):
+                    mask[3*cycles[i][j]:3*cycles[i][j]+3,3*j:3*j+3] = np.eye(3)
 
-            # Calculate right side
-            b = H.T.dot(lc_omega).dot(z_long_way - lc)
+                # Find Jacobian of cycle at this linearization point
+                H_az = self.calc_jacobian_of_string_with_reversed_edges(this_edges, this_dirs)
+
+                # concatenate edges
+                z_long_way = self.compound_edges(this_edges, this_dirs)
+
+                # Difference the edges (take care to handle the pi-wrap)
+                residual = z_long_way - this_lc
+                if residual[2] > np.pi:
+                    residual[2] -= 2.0*np.pi
+                if residual[2] <= -np.pi:
+                    residual[2] += 2.0*np.pi
+
+                A += H_az.T.dot(this_lc_omega).dot(H_az)
+                b -= H_az.T.dot(this_lc_omega).dot(residual).flatten()
 
             # Solve
-            z_star = scipy.linalg.solve(A, b)
+            z_star = scipy.linalg.solve(A, -b)
 
-            # Update estimate
-            z_hat -= z_star.reshape(z_hat.shape, order='F')
-        return z_hat
+            z_star = z_star.reshape(z_hat.shape, order='F')
 
+            z_hat -= z_star
 
+            diff = scipy.linalg.norm(z_star.flatten())
+            print iter, ":", diff
 
-    def compound_edges(self, z, dirs):
+            iter += 1
+
+        print "error = ", diff, "iters =", iter
+
+        # Update estimate
+        return z_hat, diff
+
+    def compound_arbitrary_edges(self, z, dirs, cycle):
         p = np.zeros((3,1))
-        for i in range(z.shape[1]):
+        for i in cycle:
             if dirs[i] > 0:
                 p += np.concatenate((self.R(p[2][0]).dot(z[0:2,i, None]), z[2,i,None, None]))
             else:
@@ -55,6 +144,8 @@ class REO():
 
         return p
 
+    def compound_edges(self, z, dirs):
+        return self.compound_arbitrary_edges(z, dirs, [i for i in range(len(dirs))])
 
 
     def calc_jacobian_of_string_with_reversed_edges(self, z, dirs):
@@ -70,7 +161,7 @@ class REO():
             if dirs[i] > 0:
                 H[0:2, 3*i:3*i + 2] = self.R(total_angle_so_far)
             else:
-                H[0:2, 3*i:3*i + 2] = -1.0*self.R(total_angle_so_far + theta[i])
+                H[0:2, 3*i:3*i + 2] = -self.R(total_angle_so_far + theta[i])
 
             total_angle_so_far += theta[i]
 
@@ -93,23 +184,6 @@ class REO():
         return np.array([[ct, -st],
                          [st,  ct]])
 
-def concatenate_transform(T1, T2):
-    x = T1[0] + T2[0] * np.cos(T1[2]) - T2[1] * np.sin(T1[2])
-    y = T1[1] + T2[0] * np.sin(T1[2]) + T2[1] * np.cos(T1[2])
-    psi = T1[2] + T2[2]
-    return [x, y, psi]
-
-def invert_transform(T):
-    dx = -(   T[0]*np.cos(T[2]) + T[1]*np.sin(T[2]))
-    dy = -( - T[0]*np.sin(T[2]) + T[1]*np.cos(T[2]))
-    psi = -T[2]
-    return [dx, dy, psi]
-
-def invert_edges(x, dirs, indexes):
-    for index in indexes:
-        x[:,index] = invert_transform(x[:,index])
-        dirs[index] *= -1.0
-
 
 if __name__ == '__main__':
 
@@ -123,10 +197,10 @@ if __name__ == '__main__':
 
     dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    invert_edges(perfect_edges, dirs, [3, 4, 6])
+    # optimizer.invert_edges(perfect_edges, dirs, [3, 4, 6])
 
 
-    Omegas = [np.diag([10., 10., 10.]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([100., 10., 100.]) for i in range(perfect_edges.shape[1])]
 
     edge_noise = np.array([[np.random.normal(0, 1./Omegas[i][0][0]) for i in range(perfect_edges.shape[1])],
                            [np.random.normal(0, 1./Omegas[i][1][1]) for i in range(perfect_edges.shape[1])],
@@ -134,37 +208,56 @@ if __name__ == '__main__':
 
     noisy_edges = perfect_edges + edge_noise
 
-    lc = np.array([[1.0],
-                   [0.0],
-                   [0.0]])
-    lc_omega = np.diag([1000, 1000, 0])
-    lc_dir = 1
+    lc = np.array([[1.0, 0.0, 1.0, 1.0, 0.5, 1.5],
+                   [0.0, 0.0, 1.0, 1.0, 1.5, 0.5],
+                   [-np.pi/4.0, np.pi/4.0, 3.0*np.pi/4.0, -np.pi, -3*np.pi/4.0, 3*np.pi/4.0]])
+    lc_omega = [np.diag([1000, 1000, 100]) for i in range(lc.shape[1])]
+    lc_dir =  np.array([1,1,1,1,1,1])
+
+    cycles = [[i for i in range(perfect_edges.shape[1])],
+              [i for i in range(4)],
+              [i for i in range(5)],
+              [i for i in range(2)],
+              [i for i in range(6)],
+              [i+1 for i in range(5)]]
+
+    # Turn off some loop closures
+    active_lc = [0]
+    lc = lc[:,active_lc]
+    lc_omega = [lc_omega[i] for i in active_lc]
+    lc_dir = lc_dir[active_lc, None]
+    cycles = [cycles[i] for i in active_lc]
 
     edges = perfect_edges
     edges = noisy_edges
 
-    plt.ion()
-    for iter in range(100):
+    plt.figure(0)
+    plt.clf()
+    plt.title('optimization')
+    num_iters = 10
+    for iter in range(num_iters):
 
         global_pose = np.zeros((3, noisy_edges.shape[1]+1))
         for i in range(edges.shape[1]):
             if dirs[i] > 0:
-                global_pose[:,i+1] = np.array(concatenate_transform(global_pose[:,i], edges[:,i]))
+                global_pose[:,i+1] = np.array(optimizer.concatenate_transform(global_pose[:,i], edges[:,i]))
             else:
-                global_pose[:, i + 1] = np.array(concatenate_transform(global_pose[:, i], invert_transform(edges[:, i])))
+                global_pose[:, i + 1] = np.array(optimizer.concatenate_transform(global_pose[:, i], optimizer.invert_transform(edges[:, i])))
 
-        global_lc_location = np.zeros((3,2))
-        global_lc_location[:,0] = global_pose[:,0]
-        global_lc_location[:,1] = np.array(concatenate_transform(global_pose[:,0], lc[:,0]))
+        global_lc_location = np.zeros((3, 2 * lc.shape[1]))
+        for i in range(lc.shape[1]):
+            global_lc_location[:,i*2] = global_pose[:,cycles[i][0]]
+            global_lc_location[:,i*2+1] = np.array(optimizer.concatenate_transform(global_pose[:,cycles[i][0]], lc[:,i]))
 
-        plt.figure(0)
-        plt.clf()
-        plt.title('iteration ' + str(iter))
-        plt.plot(global_pose[1,:], global_pose[0,:], 'b')
-        plt.plot(global_lc_location[1, :], global_lc_location[0, :], 'r')
-        plt.show()
+
+
+        plt.plot(global_pose[1,:], global_pose[0,:], 'b', alpha=0.1+(float(iter)/float(num_iters)**1.5)*0.9)
+        for i in range(lc.shape[1]):
+            plt.plot(global_lc_location[1, i*2:i*2+2], global_lc_location[0, i*2:i*2+2], 'r')
+
 
         debug = 1
 
-        edges = optimizer.optimize(edges, dirs, Omegas, lc, lc_omega, lc_dir, 1)
+        edges, diff = optimizer.optimize(edges, dirs, Omegas, lc, lc_omega, lc_dir, cycles, 10, 0.000001)
+    plt.show()
 
