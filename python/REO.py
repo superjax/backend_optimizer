@@ -2,6 +2,7 @@ import numpy as np
 import scipy.sparse
 import scipy.linalg
 import sys
+import numpy.matlib
 
 class REO():
     def __init__(self):
@@ -52,11 +53,15 @@ class REO():
         f.write('FIX 0\n')
         i = 0
         for edge in edges.T:
-            f.write('EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n' % (i, i+1, edge[0], edge[1], edge[2], Omegas[i][0][0], 0, 0, Omegas[i][1][1], 0, Omegas[i][2][2]))
+            if dirs[i] > 0:
+                f.write('EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n' % (i, i+1, edge[0], edge[1], edge[2], Omegas[i][0][0], 0, 0, Omegas[i][1][1], 0, Omegas[i][2][2]))
+            else:
+                f.write('EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n' % (
+                i+1, i, edge[0], edge[1], edge[2], Omegas[i][0][0], 0, 0, Omegas[i][1][1], 0, Omegas[i][2][2]))
             i += 1
         i = 0
         for l in lc.T:
-            f.write('EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n' % (lc[3], lc[4], lc[0], lc[1], lc[2], lc_omegas[i][0][0], 0, 0, lc_omegas[i][1][1], 0, lc_omegas[i][2][2]))
+            f.write('EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n' % (l[3], l[4], l[0], l[1], l[2], lc_omegas[i][0][0], 0, 0, lc_omegas[i][1][1], 0, lc_omegas[i][2][2]))
             i += 1
 
 
@@ -165,8 +170,8 @@ class REO():
                 if residual[2] <= -np.pi:
                     residual[2] += 2.0*np.pi
 
-                A += H_az.T.dot(this_lc_omega).dot(H_az)
-                b -= H_az.T.dot(this_lc_omega).dot(residual).flatten()
+                A += mask.dot(H_az.T.dot(this_lc_omega).dot(H_az)).dot(mask.T)
+                b -= mask.dot(H_az.T.dot(this_lc_omega).dot(residual).flatten())
 
             # Solve
             z_star = scipy.linalg.solve(A, b)
@@ -179,8 +184,6 @@ class REO():
             print iter, ":", diff
 
             iter += 1
-
-        print "error = ", diff, "iters =", iter
 
         # Update estimate
         return z_hat, diff
@@ -216,25 +219,34 @@ class REO():
 
         H = np.zeros((3, 3*len(dirs)))
 
-        cumsum_theta = np.concatenate((np.zeros(1), np.cumsum(thetas[0:-1])), axis=0)
-        cumsum_theta += thetas*np.array([dirs < 0]).flatten()
+        invert_indices = np.array([dirs < 0]).squeeze()
+
+        # Calculate the angle of the translation partials
+        # first, just a cumulative sum with a zero at the beginning (make sure to flip inverted edges)
+        thetas[invert_indices] *= -1.0
+        angles = np.concatenate((np.zeros(1), np.cumsum(thetas[0:-1])), axis=0)
+        # inverted edges show up early, so add them
+        angles[invert_indices] += thetas[invert_indices]
+
+        # Create the rotation matrices and throw them into the jacobian (be sure to negate the inverted guys)
+        # At the same time, calculate their rotations derivatives for later use
+        Rd = np.zeros((2, num_edges))
         for i in range(num_edges):
             if dirs[i] > 0:
-                H[0:2, 3*i:3*i + 2] = self.R(cumsum_theta[i])
+                H[0:2, 3*i:3*i + 2] = self.R(angles[i])
             else:
-                H[0:2, 3*i:3*i + 2] = -self.R(cumsum_theta[i])
+                H[0:2, 3*i:3*i + 2] = -self.R(angles[i])
+            Rd[:,i] = (self.R(angles[i] + np.pi / 2.0).dot(dtrans[:, i, None])).squeeze()
+
+
+        reversed_edges = np.zeros(num_edges)
+        reversed_edges[invert_indices] -= 1.0
+        mask2 = np.diag(dirs).dot(np.triu(np.matlib.repmat(dirs, num_edges, 1), 1) + np.diag(reversed_edges))
+
+        g = (np.kron(mask2, np.eye(2)).dot(Rd.flatten(order='F'))).reshape(2,num_edges, order='F')
 
         for i in range(num_edges):
-
-            dt_dtheta = np.zeros((2,1))
-            j = num_edges - 1
-            while j > i:
-                dt_dtheta += self.R(cumsum_theta[j] + np.pi/2.0).dot(dtrans[:,j, None])
-                j -= 1
-            if dirs[i] < 0:
-                dt_dtheta += self.R(cumsum_theta[i] + np.pi/2.0).dot(dtrans[:,i, None])
-                dt_dtheta *= -1.0
-            H[0:2, 3*i + 2, None] = dt_dtheta
+            H[0:2, 3*i + 2, None] = g[:,i, None]
             H[2, 3*i + 2] = dirs[i]
         return H
 
@@ -266,10 +278,10 @@ if __name__ == '__main__':
 
         dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-        # optimizer.invert_edges(perfect_edges, dirs, [3, 4, 6])
+        optimizer.invert_edges(perfect_edges, dirs, [3, 4, 6])
 
 
-        Omegas = [np.diag([10., 10., 100.]) for i in range(perfect_edges.shape[1])]
+        Omegas = [np.diag([1000., 1000., 10000.]) for i in range(perfect_edges.shape[1])]
 
         edge_noise = np.array([[np.random.normal(0, 1./Omegas[i][0][0]) for i in range(perfect_edges.shape[1])],
                                [np.random.normal(0, 1./Omegas[i][1][1]) for i in range(perfect_edges.shape[1])],
@@ -310,9 +322,11 @@ if __name__ == '__main__':
     plt.figure(0)
     plt.clf()
     plt.title('optimization')
-    num_iters = 1000
+    num_iters = 100
     zbar = edges.copy()
-    for iter in range(num_iters):
+    iter = 0
+    diff = 10000
+    while iter < num_iters and diff > 0.00001:
 
         global_pose = np.zeros((3, edges.shape[1]+1))
         for i in range(edges.shape[1]):
@@ -335,5 +349,7 @@ if __name__ == '__main__':
         debug = 1
 
         edges, diff = optimizer.optimize(zbar, dirs, Omegas, lc, lc_omega, lc_dir, cycles, 1, 0.000001, edges)
+        iter += 1
+        print "error = ", diff, "iters =", iter
     plt.show()
 
