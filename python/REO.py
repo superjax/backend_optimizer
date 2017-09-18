@@ -219,37 +219,33 @@ class REO():
 
         H = np.zeros((3, 3*len(dirs)))
 
-        invert_indices = np.array([dirs < 0]).squeeze()
-
-        # Calculate the angle of the translation partials
-        # first, just a cumulative sum with a zero at the beginning (make sure to flip inverted edges)
-        thetas[invert_indices] *= -1.0
-        angles = np.concatenate((np.zeros(1), np.cumsum(thetas[0:-1])), axis=0)
-        # inverted edges show up early, so add them
-        angles[invert_indices] += thetas[invert_indices]
-
-        # Create the rotation matrices and throw them into the jacobian (be sure to negate the inverted guys)
-        # At the same time, calculate their rotations derivatives for later use
-        Rd = np.zeros((2, num_edges))
+        cumsum_angle = 0
+        angles = np.zeros(num_edges)
+        # Calculate the rotation jacobian
         for i in range(num_edges):
             if dirs[i] > 0:
-                H[0:2, 3*i:3*i + 2] = self.R(angles[i])
+                angles[i] = cumsum_angle
+                cumsum_angle += thetas[i]
             else:
-                H[0:2, 3*i:3*i + 2] = -self.R(angles[i])
-            Rd[:,i] = (self.R(angles[i] + np.pi / 2.0).dot(dtrans[:, i, None])).squeeze()
-
-
-        reversed_edges = np.zeros(num_edges)
-        reversed_edges[invert_indices] -= 1.0
-        mask2 = np.diag(dirs).dot(np.triu(np.matlib.repmat(dirs, num_edges, 1), 1) + np.diag(reversed_edges))
-
-        g = (np.kron(mask2, np.eye(2)).dot(Rd.flatten(order='F'))).reshape(2,num_edges, order='F')
+                # if the edge is inverted, the angle shows up early, and it is backward
+                cumsum_angle -= thetas[i]
+                angles[i] = -cumsum_angle
+            # Fill in the translation jacobian
+            H[0:2, 3*i:3*i+2] = self.R(angles[i])
 
         for i in range(num_edges):
-            H[0:2, 3*i + 2, None] = g[:,i, None]
-            H[2, 3*i + 2] = dirs[i]
+            # Calculate the rotation jacobian
+            j = num_edges - 1
+            dt_dtheta = np.zeros(2)
+            while j > i:
+                dt_dtheta += self.R(angles[j] + np.pi/2.0).dot(dtrans[:,j])
+                j -= 1
+            if dirs[i] < 0:
+                dt_dtheta += self.R(angles[i] + np.pi/2.0).dot(dtrans[:,i])
+                dt_dtheta *= -1.0
+            H[0:2, 3*i+2] = dt_dtheta
+            H[2, 3*i+2] = dirs[i]
         return H
-
 
     def R(self,theta):
         ct = np.cos(theta)
@@ -278,10 +274,10 @@ if __name__ == '__main__':
 
         dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-        optimizer.invert_edges(perfect_edges, dirs, [3, 4, 6])
+        optimizer.invert_edges(perfect_edges, dirs, [5, 7, 2])
 
 
-        Omegas = [np.diag([1000., 1000., 10000.]) for i in range(perfect_edges.shape[1])]
+        Omegas = [np.diag([10., 10., 100.]) for i in range(perfect_edges.shape[1])]
 
         edge_noise = np.array([[np.random.normal(0, 1./Omegas[i][0][0]) for i in range(perfect_edges.shape[1])],
                                [np.random.normal(0, 1./Omegas[i][1][1]) for i in range(perfect_edges.shape[1])],
@@ -303,7 +299,7 @@ if __name__ == '__main__':
                   [i+1 for i in range(5)]]
 
         # Turn off some loop closures
-        active_lc = [0]
+        active_lc = [0, 2]
         lc = lc[:,active_lc]
         lc_omega = [lc_omega[i] for i in active_lc]
         lc_dir = lc_dir[active_lc, None]
