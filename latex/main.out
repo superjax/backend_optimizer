@@ -4,8 +4,9 @@
 \BOOKMARK [2][-]{subsection.2.2}{Global Pose Optimization}{section.2}% 4
 \BOOKMARK [2][-]{subsection.2.3}{Relative Edge Optimization}{section.2}% 5
 \BOOKMARK [2][-]{subsection.2.4}{Relative Edge Optimization in SE\(2\)}{section.2}% 6
-\BOOKMARK [1][-]{section.3}{Implementation}{}% 7
-\BOOKMARK [1][-]{section.4}{Results}{}% 8
-\BOOKMARK [2][-]{subsection.4.1}{Simulation}{section.4}% 9
-\BOOKMARK [2][-]{subsection.4.2}{Hardware}{section.4}% 10
-\BOOKMARK [1][-]{section.5}{Conclusions}{}% 11
+\BOOKMARK [1][-]{section.3}{Comparison: Relative Edge vs. Pose Optimization}{}% 7
+\BOOKMARK [1][-]{section.4}{Implementation}{}% 8
+\BOOKMARK [1][-]{section.5}{Results}{}% 9
+\BOOKMARK [2][-]{subsection.5.1}{Simulation}{section.5}% 10
+\BOOKMARK [2][-]{subsection.5.2}{Hardware}{section.5}% 11
+\BOOKMARK [1][-]{section.6}{Conclusions}{}% 12

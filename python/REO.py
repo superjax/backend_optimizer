@@ -86,34 +86,6 @@ class REO():
             x[:, index] = self.invert_transform(x[:, index])
             dirs[index] *= -1.0
 
-    # def optimize(self, z_bar, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, iters, epsilon):
-    #     edges = z_bar.copy()
-    #
-    #     occurrances = []
-    #     for i in range(z_bar.shape[1]):
-    #         occurrances.append(sum(x.count(i) for x in cycles))
-    #     W = np.diag(occurrances)/float(max(occurrances))
-    #     for i in range(len(cycles)):
-    #         this_edges = edges[:,cycles[i]]
-    #         this_edge_dirs = dirs[cycles[i]]
-    #         this_edge_Omegas = [Omegas[j] for j in cycles[i]]
-    #         this_lc = lcs[:, i, None]
-    #         this_lc_dir = lc_dirs[i]
-    #         this_lc_omega = lc_omegas[i]
-    #
-    #         updated_edges, error = self.optimize_cycle(this_edges, this_edge_dirs, this_edge_Omegas, this_lc,
-    #                                                    this_lc_omega, this_lc_dir, 100, epsilon)
-    #
-    #         # only update if it's a helpful update
-    #         if error < epsilon:
-    #             # Weight the amount of change with the number of occurrences
-    #             edge_update = np.zeros(edges.shape)
-    #             edge_update[:,cycles[i]] = updated_edges
-    #             edge_update = edge_update.dot(W)
-    #             # update with the results of this optimization
-    #             edges -= edge_update
-    #     return edges
-
     def optimize(self, z_bar, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, iters, epsilon, x0 = []):
 
         # create giant combined omega
@@ -140,7 +112,6 @@ class REO():
                     psi -= 2.0*np.pi
                 elif psi <= -np.pi:
                     psi += 2.0*np.pi
-
 
             A = Omega
             b = -Omega.dot(delta.flatten(order='F'))

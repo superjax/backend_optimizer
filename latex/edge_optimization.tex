@@ -37,43 +37,45 @@ e & \text{: Number of odometry edges } \\
 
 
 % describe mathematically pose optimization
-Pose graph optimization typically formulated as a least-squares optimization problem.  This formulation can be derived analytically from the structure of the pose graph~\cite{Kummerle2011} or from a Bayesian perspective in a factor graph~\cite{Kaess2008}.  Both derivations ultimately pose the optimization problem similar to the following:
+Pose graph optimization typically formulated as a least-squares optimization problem.  This formulation can be derived using a classical least-squares optimization approach~\cite{Kummerle2011} or from a Bayesian perspective in a factor graph~\cite{Kaess2008}.  If noise about graph edges is assumed to be gaussian, both derivations ultimately lead to the following expression for the global cost function of the optimization:
 
 \begin{align}
   F(\eest,\emeas) = \sum_{\{i,j\} \in \mathcal{O}} \overbrace{(\eest_{ij}-\emeas_{ij})^\top\Omega_{ij}(\eest_{ij}-\emeas_{ij})}^\text{Odometry error penalty} + \sum_{\{a,z\} \in \mathcal{L}} \overbrace{ (\eest_{a-z}-\emeas_{az})^\top \Omega_{az} (\eest_{a-z}-\emeas_{az}) }^\text{Loop error penalty}
   \label{eqn:cost_function}
 \end{align}
 
-The process then assumes the following steps:
+The process then typically assumes the following steps to optimize the graph:
 
 \begin{enumerate}
   \item define an initial global pose estimate for each vertex $\xhat_i$
   \item determine the estimated edges by differencing two connected vertices $\eest_{ij} = \xhat_j - \xhat_i$
-  \item find the optimal set of vertex positions to minimize the cost
+  \item find the optimal set of vertex positions
 
   \begin{align}
       \xhat^* = \argmin_{\xhat} F\Big(\eest(\xhat),\emeas \Big)
 	     \label{eqn:global_opt}
 	\end{align}
 
-  The typical approach is
-		\begin{enumerate}
-		\item Express the cost function in terms of $\xhat^+ = \xhat + \Delta\x$
-		\item Linearize $\eest(\xhat)$ in terms of $\Delta\x$
-		\item Take the partial derivative of the cost function with respect to $\Delta\x$
-		\item Restructure the problem to be of the form $A \Delta \x = b$ and solve for $\Delta\x$.
-		\item Apply the update to $\xhat$ and repeat steps (a)-(e) until $\Delta\x < \epsilon$.
-	\end{enumerate}
 
+   using Gauss-Newton or Levenberg-Marquardt optimization.
 \end{enumerate}
 
-Global pose optimization solves the system by projecting onto the Cartesian coordinate frame with respect to a privileged coordinate frame. When only relative information is available, the initial global pose estimates can be arbitrarily far from their true position in this frame. The iterative nature of the Newton method works ideally when close to the solution, but can converge on a local minimum otherwise.  Figure~\ref{fig:g2o_divergence} illustrates results of global pose optimization on a hardware experiment with a multirotor with both relative odometry measurements and global GPS measurements which was initialized with a 180$^\circ$ initial heading error.
+The details of optimization typically follow the following pattern:
+\begin{enumerate}
+	\item Express the cost function in terms of $\xhat^+ = \xhat + \Delta\x$
+	\item Linearize $\eest(\xhat)$ in terms of $\Delta\x$
+	\item Take the partial derivative of the cost function with respect to $\Delta\x$
+	\item Restructure the problem to be of the form $A \Delta \x = b$ and solve for $\Delta\x$.
+	\item Apply the update to $\xhat$ and repeat steps (1)-(5) until $\Delta\x < \epsilon$.
+ \end{enumerate}
 
-\begin{figure}
-  \includegraphics[width=0.3\textwidth]{figures/g2o_divergence.jpg}
-  \caption{Divergent behavior observed in global pose optimization due to poor initialization}
-  \label{fig:g2o_divergence}
-\end{figure}
+Global pose optimization solves the system by projecting onto the Cartesian coordinate frame with respect to a privileged coordinate frame. When only relative information is available, the initial global pose estimates can be arbitrarily far from their true position in this frame. The iterative nature of the Newton method works ideally when close to the solution, but can converge on a local minimum otherwise.  Figure~\ref{fig:g2o_divergence} illustrates results of global pose optimization on a hardware experiment with a multirotor with both relative odometry measurements and global GPS measurements which was initialized with a 180$^\circ$ initial heading error.  The large heading error induces extremely large linearization errors, which causes global pose optimization to struggle in finding the global optima.
+
+% \begin{figure}
+%   \includegraphics[width=0.3\textwidth]{figures/g2o_divergence.jpg}
+%   \caption{Divergent behavior observed in global pose optimization due to poor initialization}
+%   \label{fig:g2o_divergence}
+% \end{figure}
 
 
 % describe mathematically edge optimization
@@ -110,8 +112,6 @@ where
 \end{align*}
 
 Taking the derivative of the cost function with respect to $\Delta\e$ and setting it equal to zero will allow us to solve for the optimal edge update $\Delta\e^*$.
-
-Using the matrix calculus chain rule and simplifying, we see
 \begin{align*}
   \dfrac{\partial F(\eest^+,\emeas)}{\partial \Delta\e} = \mathbf{0}^\top \\
   2 (\eest+\Delta\e^*-\emeas)^\top \boldsymbol{\Omega} \frac{\partial (\eest+\Delta\e-\emeas)}{\partial \Delta\e}
@@ -127,15 +127,16 @@ Using the matrix calculus chain rule and simplifying, we see
   = \mathbf{0}^\top.
 \end{align*}
 
-Transpose both sides, noting that the information matrices are symmetric
-\begin{align*}
+Transposing both sides, noting that the information matrices are symmetric results in the following expression for the edge update:
+\begin{align}
   \boldsymbol{\Omega} (\eest+\Delta\e^*-\emeas)
   + \sum_{\{a,z\} \in \mathcal{L}}
   \frac{\partial h(\eest_{a-z},\Delta\e)}{\partial \Delta\e}^\top \Omega_{az} (h(\eest_{a-z},\Delta\e^*)-\emeas_{az})
   = \mathbf{0}.
-\end{align*}
+  \label{eq:edge_update}
+\end{align}
 
-The first term causes the optimization to respect the odometry constraints; it is always linear with respect to $\Delta\e$ even when the underlying edges are nonlinearly coupled. The second term is a function of the set of edges found in the various loop closures $\mathcal{O_L}$. As a result, any edge not found in a loop closure can be trivially solved for directly using the first term. We see
+The first term in Eq~\ref{eq:edge_update} causes the optimization to respect the odometry constraints; it is always linear with respect to $\Delta\e$ even when the underlying edges are nonlinearly coupled. The second term is a function of the set of edges found in the various loop closures $\mathcal{O_L}$. As a result, any edge not found in a loop closure can be trivially solved for directly using the first term. We see
 \begin{align*}
   \Delta\e_{ij}^* = \emeas_{ij} -\eest_{ij}
   \end{align*}
@@ -143,7 +144,7 @@ The first term causes the optimization to respect the odometry constraints; it i
   \begin{align*}
   \eest_{ij}^+ = \emeas_{ij}  \text{ for } \{i,j\} \notin \mathcal{O_L}.
 \end{align*}
-In other words, any edge estimate that is not part of a redundant path is driven to its original measured state. These edges do not influence the optimization, in no way pinning them to some initial Cartesian pose.   We can finally move all constant terms to the right-hand side of the equation and write the final cost function.
+In other words, any edge estimate that is not part of a redundant path is driven to its original measured state, and in no other way influence the optimization. We can finally move all constant terms to the right-hand side of the equation and write the final cost function.
 \begin{align}
   \boldsymbol{\Omega} \Delta\e^*  + \sum_{\{a,z\} \in \mathcal{L}}
   \frac{\partial h(\eest_{a-z},\Delta\e)}{\partial \Delta\e}^\top
@@ -193,73 +194,35 @@ Take the example of a 3 DoF robot which follows the standard unicycle model, whe
 	\end{array}\right]
 \end{align*}
 
-where
-
-\begin{align*}
-  T_{az} &= T_{ab} T_{bc} T_{cd} ... T_{yz}
-\end{align*}
-
-and
+where $T_{ij}$ is the  homogeneous transform matrix with the form
 
 \begin{align*}
   T_{ij} &= \left[\begin{array}{ccc}
   \cos(\theta_i + \Delta\theta_i) & -\sin(\theta_i + \Delta\theta_i) & f_i + \Delta f_i \\
   \sin(\theta_i + \Delta\theta_i) &  \cos(\theta_i + \Delta\theta_i) & r_i + \Delta r_i \\ 0 & 0 & 1
-  \end{array}\right]
+\end{array}\right] \in \mathbb{R}^{3 \times 3}
+\end{align*}
+
+and compounds according to
+
+\begin{align*}
+  T_{az} &= T_{ab} T_{bc} T_{cd} ... T_{yz}.
 \end{align*}
 
 Note that bearing angle just sums between edge compounding through multiplication of the rotation part of the transform.
 
-Let $w$ be the number of edges in the loop closure from $a-z$.
-The partial derivative of compounding a series of edges is
+\begin{figure}
+  \includegraphics[width=0.7\textwidth]{figures/multiple_lc.jpg}
+  \caption{A loop closure with multiple loop closures and reversed edges}
+  \label{fig:reversed_pose_graph}
+\end{figure}
 
-\begin{align*}
-   \mathbf{H}_{az} &=
-  \left[\begin{array}{ccccccccc}
-  R_{\boldsymbol{\theta}_1} & \mathbf{g}_2 & R_{\boldsymbol{\theta}_2} & \mathbf{g}_3 &
-  \dots & R_{\boldsymbol{\theta}_{w-1}} & \mathbf{g}_w & R_{\boldsymbol{\theta}_w} & \mathbf{0}\\
-  \mathbf{0}^\top & 1 & \mathbf{0}^\top & 1 & \dots
-   & \mathbf{0}^\top & 1 & \mathbf{0}^\top & 1 \end{array}\right]
-\end{align*}
-
-where
-\begin{align*}
-  \boldsymbol{\theta} = \left[\begin{array}{ccc}
-  \boldsymbol{\theta}_1&
-  \dots&
-  \boldsymbol{\theta}_{w+1}
-  \end{array}\right]^\top =  \left[\begin{array}{ccccc}
-  0 & \theta_{ab} & \theta_{ab} + \theta_{bc} & \dots & \sum_{i \in \{a,z\}} \left( \theta_i + \Delta\theta_i \right)
-  \end{array}\right]^\top
-\end{align*}
-
-is the cumulative bearing angle,
-
-\begin{align*}
-  R_a = \left[\begin{array}{cc}
-  \cos(a) & -\sin(a) \\ \sin(a) & \cos(a)
-  \end{array}\right]
-\end{align*}
-
-is a rotation matrix, and
-
-\begin{align*}
-  \mathbf{g}_k = \sum_{i=k}^{w} \left(\left[\begin{array}{cc}
-  -\sin(\boldsymbol{\theta}_i) & -\cos(\boldsymbol{\theta}_i) \\ \cos(\boldsymbol{\theta}_i) & -\sin(\boldsymbol{\theta}_i)
-  \end{array}\right]
-  \left[\begin{array}{c}
-  f_i \\ r_i
-  \end{array}\right]\right).
-\end{align*}
-
-is the result of transforming the translation part of the edge by the appropriate rotation.
-
-\pagebreak
+The Jacobian $\mathbf{H}_{az}$ can be calculated for an arbitrary set of edges for a graph without reversed edges, like the one shown in Figure~\ref{fig:pose_graph} with algorithm~\ref{algo:non_reversed}.  More complicated loops, with multiple loop closures, such as pictured in Figure~\ref{fig:reversed_pose_graph}, may have one or more of the edges reversed.  In this case, the reversed edges must be compounded after first inverted the reversed edges.  This also causes further complications in the calculation of the Jacobian $\mathbf{H}_{az}$.  Algorithm~\ref{algo:reversed} can be used to calculate $\mathbf{H}_{az}$ in this case.
 
 \begin{algorithm}[H]
   \caption{Jacobian Calculation for a cycle without reversed edges}\label{algo:non_reversed}
   \begin{algorithmic}[1]
-    \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{1,2}} = 1$
+    \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{1,2}} = I$
     \For{$\e_{ij} \in \mathcal{L}$}
       \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{ij}} = \prod_{\{m,n\} < \{i,j\}} R_{m,n}$
     \EndFor
@@ -277,7 +240,7 @@ is the result of transforming the translation part of the edge by the appropriat
     \If{ dir$\left( \e_{10} \right) < 0$ }
       \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{1,2}} = -R_{12}$
     \Else
-      \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{1,2}} = 1$
+      \State $\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{1,2}} = I$
     \EndIf
     \For{$\e_{ij} \in \mathcal{L}$}
       \If{ dir$\left( \e_{ij} \right) > 0$ }
@@ -291,14 +254,10 @@ is the result of transforming the translation part of the edge by the appropriat
         \State $\dfrac{\partial \Delta t_{a-z}}{\partial \theta_{ij}} = \sum_{\{m,n\} > \{i,j\}} \dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{mn}} \Delta t_{mn}$
       \Else
         \State $\dfrac{\partial \Delta t_{a-z}}{\partial \theta_{ij}} =
-        \sum_{\{m,n\} \geq \{i,j\}} -\dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{mn}} \Delta t_{mn}$
+        - \sum_{\{m,n\} \geq \{i,j\}} \dfrac{\partial \Delta t_{a-z}}{\partial \Delta t_{mn}} \Delta t_{mn}$
       \EndIf
       \State $\dfrac{\partial \theta_{a-z}}{\partial \theta_{ij}} = $dir$\left( \e_{ij} \right)$
       \State $\dfrac{\partial \Delta t_{a-z}}{\partial \theta_{ij}} = \textbf{0}$
     \EndFor
   \end{algorithmic}
 \end{algorithm}
-
-% show that they are mathematically equivalent
-% describe differences (pros/cons)
-% how to use them together
