@@ -86,7 +86,7 @@ class REO():
             x[:, index] = self.invert_transform(x[:, index])
             dirs[index] *= -1.0
 
-    def optimize(self, z_bar, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, iters, epsilon, x0 = []):
+    def optimize(self, z_bar, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, iters, epsilon, x0 = [], randomize=False):
 
         # create giant combined omega
         Omega = scipy.sparse.block_diag(Omegas).toarray()
@@ -103,6 +103,7 @@ class REO():
 
         diff = sys.float_info.max
         iter = 0
+
         while iter < iters and diff > epsilon:
 
             # How far have we deviated from our original measurements (be sure to handle pi-wrap)
@@ -116,7 +117,6 @@ class REO():
             A = Omega
             b = -Omega.dot(delta.flatten(order='F'))
 
-            # Build up the loop closure part of the cost function
             for i in range(len(cycles)):
                 this_edges = z_hat[:, cycles[i]]
                 this_dirs = dirs[cycles[i]]
@@ -289,7 +289,7 @@ if __name__ == '__main__':
     plt.figure(0)
     plt.clf()
     plt.title('optimization')
-    num_iters = 100
+    num_iters = 10000
     zbar = edges.copy()
     iter = 0
     diff = 10000
@@ -315,7 +315,9 @@ if __name__ == '__main__':
 
         debug = 1
 
-        edges, diff = optimizer.optimize(zbar, dirs, Omegas, lc, lc_omega, lc_dir, cycles, 1, 0.000001, edges)
+        cycle = [cycles[np.random.randint(0, len(cycles))]]
+
+        edges, diff = optimizer.optimize(zbar, dirs, Omegas, lc, lc_omega, lc_dir, cycles, 1, 0.00001, edges, randomize=False)
         iter += 1
         print "error = ", diff, "iters =", iter
     plt.show()

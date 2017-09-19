@@ -6,7 +6,10 @@
 \BOOKMARK [2][-]{subsection.2.4}{Relative Edge Optimization in SE\(2\)}{section.2}% 6
 \BOOKMARK [1][-]{section.3}{Comparison: Relative Edge vs. Pose Optimization}{}% 7
 \BOOKMARK [1][-]{section.4}{Implementation}{}% 8
-\BOOKMARK [1][-]{section.5}{Results}{}% 9
-\BOOKMARK [2][-]{subsection.5.1}{Simulation}{section.5}% 10
-\BOOKMARK [2][-]{subsection.5.2}{Hardware}{section.5}% 11
-\BOOKMARK [1][-]{section.6}{Conclusions}{}% 12
+\BOOKMARK [2][-]{subsection.4.1}{Front-end State Estimation}{section.4}% 9
+\BOOKMARK [2][-]{subsection.4.2}{Loop Closure Discovery and Calculation}{section.4}% 10
+\BOOKMARK [2][-]{subsection.4.3}{Stochastic Selection of Edges}{section.4}% 11
+\BOOKMARK [1][-]{section.5}{Results}{}% 12
+\BOOKMARK [2][-]{subsection.5.1}{Simulation}{section.5}% 13
+\BOOKMARK [2][-]{subsection.5.2}{Hardware}{section.5}% 14
+\BOOKMARK [1][-]{section.6}{Conclusions}{}% 15
