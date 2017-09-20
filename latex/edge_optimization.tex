@@ -60,7 +60,7 @@ The process then typically assumes the following steps to optimize the graph:
    using Gauss-Newton or Levenberg-Marquardt optimization.
 \end{enumerate}
 
-The details of optimization typically follow the following pattern:
+The optimization process then takes place according to the following pattern:
 \begin{enumerate}
 	\item Express the cost function in terms of $\xhat^+ = \xhat + \Delta\x$
 	\item Linearize $\eest(\xhat)$ in terms of $\Delta\x$
@@ -80,14 +80,14 @@ Global pose optimization solves the system by projecting onto the Cartesian coor
 
 % describe mathematically edge optimization
 \subsection{Relative Edge Optimization}
-Instead of optimizing over poses, we propose to optimize directly over relative edge constraints $\eest$.  This avoids the use of a privileged coordinate frame like the starting point of the vehicle or the global origin and keeps the problem in the measurement space.  The optimization problem is posed as
+Instead of optimizing over poses, we propose optimizing directly over relative edge constraints $\eest$.  This avoids the use of a privileged coordinate frame like the starting point of the vehicle or the global origin and keeps the problem in the measurement space.  The optimization problem in Equation~\ref{eqn:global_opt} is then instead posed as
 
 \begin{align}
   \mathbf{\eest}^* = \argmin_{\eest} F\Big(\eest,\emeas \Big).
   \label{eqn:relative_opt}
 \end{align}
 
-In contrast to Equation \ref*{eqn:global_opt}, it becomes clear that global vertex positions are never introduced. Rather, we update the original edge estimates directly. Assuming our incoming odometry measurements are zero-mean, setting $\eest_0 = \emeas$ will be a good initial guess.  Additionally, keeping the optimization in the measurement space means that linearization errors should in general be smaller.  Figure~\ref{fig:linearization} illustrates this graphically.
+In contrast to Equation \ref*{eqn:global_opt}, it becomes clear that global vertex positions are never introduced. Rather, we update the original edge estimates directly. Assuming our incoming odometry measurements are zero-mean, setting $\eest_0 = \emeas$ will be a good initial guess.  Additionally, keeping the optimization in the measurement space means that linearization errors should in general be smaller.  Figure~\ref{fig:linearization} illustrates the intuition behind this claim.
 
 \begin{figure}
   \includegraphics[width=0.7\textwidth]{figures/linearization.jpg}
@@ -185,6 +185,7 @@ With this approximation, Equation \ref{eqn:opt} simplifies to
 \end{align}
 
 \subsection{Relative Edge Optimization in $SE(2)$}
+\label{sec:relative_edge_optimization_in_se2}
 
 Take the example of a 3 DoF robot which follows the standard unicycle model, where edges are defined as $\e_i = \left[\begin{array}{ccc} f_i & r_i & \theta_i \end{array}\right]^\top$ where $f$ and $r$ represent forward and right motion and $\theta$ represents a change in bearing. In this case translational motion is coupled with heading. Let us first consider the simple case of a single loop closure after a string of edges, which could be described graphically as shown in~\ref{fig:pose_graph}.  In this case, the series of edges can be represented as a series of transformation matrices as follows:
 
@@ -217,7 +218,7 @@ Note that bearing angle just sums between edge compounding through multiplicatio
   \label{fig:reversed_pose_graph}
 \end{figure}
 
-The Jacobian $\mathbf{H}_{az}$ can be calculated for an arbitrary set of edges for a graph without reversed edges, like the one shown in Figure~\ref{fig:pose_graph} with algorithm~\ref{algo:non_reversed}.  More complicated loops, with multiple loop closures, such as pictured in Figure~\ref{fig:reversed_pose_graph}, may have one or more of the edges reversed.  In this case, the reversed edges must be compounded after first inverted the reversed edges.  This also causes further complications in the calculation of the Jacobian $\mathbf{H}_{az}$.  Algorithm~\ref{algo:reversed} can be used to calculate $\mathbf{H}_{az}$ in this case.
+The Jacobian $\mathbf{H}_{az}$ can be calculated for an arbitrary set of edges for a graph without reversed edges, like the one shown in Figure~\ref{fig:pose_graph} with algorithm~\ref{algo:non_reversed}.  More complicated loops, with multiple loop closures, such as pictured in Figure~\ref{fig:reversed_pose_graph}, may have one or more of the edges reversed.  In this case, the edge string must be compounded after first inverting the reversed edges.  This also causes further complications in the calculation of the Jacobian $\mathbf{H}_{az}$.  Algorithm~\ref{algo:reversed} can be used to calculate $\mathbf{H}_{az}$ in this case.
 
 \begin{algorithm}[H]
   \caption{Jacobian Calculation for a cycle without reversed edges}\label{algo:non_reversed}

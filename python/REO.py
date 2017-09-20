@@ -4,6 +4,24 @@ import scipy.linalg
 import sys
 import numpy.matlib
 
+
+def concatenate_transform(T1, T2):
+    cs = np.cos(T1[2])
+    ss = np.sin(T1[2])
+    x = T1[0] + T2[0] * cs - T2[1] * ss
+    y = T1[1] + T2[0] * ss + T2[1] * cs
+    psi = T1[2] + T2[2]
+    return [x, y, psi]
+
+
+def invert_transform(T):
+    cs = np.cos(T[2])
+    ss = np.sin(T[2])
+    dx = -(T[0] * cs + T[1] * ss)
+    dy = -(- T[0] * ss + T[1] * cs)
+    psi = -T[2]
+    return [dx, dy, psi]
+
 class REO():
     def __init__(self):
         debug = 1
@@ -63,23 +81,6 @@ class REO():
         for l in lc.T:
             f.write('EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n' % (l[3], l[4], l[0], l[1], l[2], lc_omegas[i][0][0], 0, 0, lc_omegas[i][1][1], 0, lc_omegas[i][2][2]))
             i += 1
-
-
-    def concatenate_transform(self, T1, T2):
-        cs = np.cos(T1[2])
-        ss = np.sin(T1[2])
-        x = T1[0] + T2[0] * cs - T2[1] * ss
-        y = T1[1] + T2[0] * ss + T2[1] * cs
-        psi = T1[2] + T2[2]
-        return [x, y, psi]
-
-    def invert_transform(self, T):
-        cs = np.cos(T[2])
-        ss = np.sin(T[2])
-        dx = -(T[0] * cs + T[1] * ss)
-        dy = -(- T[0] * ss + T[1] * cs)
-        psi = -T[2]
-        return [dx, dy, psi]
 
     def invert_edges(self, x, dirs, indexes):
         for index in indexes:
