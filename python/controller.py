@@ -9,7 +9,7 @@ class Controller:
         self.nominal_velocity = 1.0
         self.intersection_radius = .25
 
-        self.grid_size = 10
+        self.grid_size = 1.0
 
         psi0 = init_pose[2]
         R = np.array([[cos(psi0), -sin(psi0), 0],

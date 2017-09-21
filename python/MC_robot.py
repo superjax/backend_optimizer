@@ -41,6 +41,11 @@ class MC_Robot(Robot):
         elif self.psi_true <= -pi:
             self.psi_true += 2*pi
 
+        # Propagate Estimate
+        self.x += (xdot*np.ones(self.num_trajectories) + np.random.randn(self.num_trajectories) * self.G[0][0]) * dt
+        self.y += (ydot*np.ones(self.num_trajectories) + np.random.randn(self.num_trajectories) * self.G[1][1]) * dt
+        self.psi += (psidot*np.ones(self.num_trajectories) + np.random.randn(self.num_trajectories) * self.G[2][2]) * dt
+
         # Propagate Inertial Truth (for BOW hash)
         xdot = v * cos(self.psiI)
         ydot = v * sin(self.psiI)
@@ -52,11 +57,6 @@ class MC_Robot(Robot):
             self.psiI -= 2 * pi
         elif self.psiI <= -pi:
             self.psiI += 2 * pi
-
-        # Propagate Estimate
-        self.x += xdot*np.ones(self.num_trajectories) + np.random.normal(0, self.G[0,0], self.num_trajectories)
-        self.y += ydot*np.ones(self.num_trajectories) + np.random.normal(0, self.G[1,1], self.num_trajectories)
-        self.psi += psidot*np.ones(self.num_trajectories) + np.random.normal(0, self.G[2,2], self.num_trajectories)
 
         # Wrap to +/0 psi
         out_of_bounds = self.psi > np.pi
