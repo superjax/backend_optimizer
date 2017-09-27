@@ -7,9 +7,10 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import scipy.linalg
 
 def generate_data():
-    trajectory_time = 60.0
+    trajectory_time = 10.1
     dt = 0.01
     time = np.arange(0, trajectory_time, dt)
 
@@ -61,6 +62,7 @@ def generate_data():
     data['odometry'] = np.array(odometry)
     data['global_state'] = global_state
     data['truth'] = truth
+    data['Q'] = Q
 
     # Load Keyframes into the keyframe matcher and find loop closures
     kf_matcher = KeyframeMatcher()
@@ -71,16 +73,73 @@ def generate_data():
 
     pickle.dump(data, f)
 
-
-
-
-
 def get_global_pose(edges, x0):
     x = np.zeros((edges.shape[0], edges.shape[1] + 1))
     x[:, 0] = x0
     for i in range(edges.shape[1]):
         x[:,i + 1] = concatenate_transform(x[:,i], edges[:,i])
     return x
+
+def GPO_opt(edges, odometry, lc, global_state, Q):
+    edge_lists = edges
+
+    # Optimize with Global Pose Optimization
+    GPO = backend_optimizer.Optimizer()
+    GPO.new_graph('0_000', 0)
+    edge_lists.extend(odometry.tolist())
+    edge_lists.extend([[Q[0][0] for j in range(odometry.shape[1])]])
+    edge_lists.extend([[Q[1][1] for j in range(odometry.shape[1])]])
+    edge_lists.extend([[Q[2][2] for j in range(odometry.shape[1])]])
+    for lc in loop_closures:
+        edge_lists[0].append(lc['from_node_id'])
+        edge_lists[1].append(lc['to_node_id'])
+        edge_lists[2].append(lc['transform'][0])
+        edge_lists[3].append(lc['transform'][1])
+        edge_lists[4].append(lc['transform'][2])
+        edge_lists[5].append(lc['covariance'][0][0])
+        edge_lists[6].append(lc['covariance'][1][1])
+        edge_lists[7].append(lc['covariance'][2][2])
+
+    node_lists = [node_names[1:]]
+    node_lists.extend(global_state[:, 1:].tolist())
+
+    nodes_transpose = [list(j) for j in zip(*node_lists)]
+    edges_transpose = [list(j) for j in zip(*edge_lists)]
+
+    GPO.add_edge_batch(nodes_transpose, edges_transpose)
+    out_dict = GPO.get_optimized()
+    global_pose = []
+    for node in out_dict['nodes']:
+        global_pose.append(node[1:])
+    global_pose = np.array(global_pose)
+    return global_pose.T
+
+def REO_opt(edges, odometry, loop_closures, global_state, Q):
+
+    reo = REO()
+    dirs = np.ones(odometry.shape[1])
+    Qinv = scipy.linalg.inv(Q)
+    Omegas = [Qinv for i in range(odometry.shape[1])]
+
+    lc_dirs = []
+    lcs = np.zeros((3, len(loop_closures)))
+    lc_omegas = []
+    cycles = []
+    for i in range(len(loop_closures)):
+        lc_dirs.append(1)
+        lc_omegas.append(scipy.linalg.inv(loop_closures[i]['covariance']))
+        lcs[:,i] = loop_closures[i]['transform']
+        from_id = int(loop_closures[i]['from_node_id'].split('_')[1])
+        to_id = int(loop_closures[i]['to_node_id'].split('_')[1])
+        if to_id > from_id:
+            cycle = range(from_id, to_id)
+        else:
+            cycle = range(to_id, from_id)
+        cycles.append(cycle)
+    z_hat, diff = reo.optimize(odometry, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, 100, 1e-5)
+    x_hat = get_global_pose(z_hat, np.array([0, 0, 0]))
+    return x_hat
+
 
 if __name__ == '__main__':
 
@@ -91,29 +150,45 @@ if __name__ == '__main__':
     global_state = data['global_state']
     keyframes = np.array(data['keyframes'])
     truth = np.array(data['truth'])
-    loop_closures = np.array(data['loop_closures'])
+    loop_closures = data['loop_closures']
+    Q = data['Q']
 
-    num_robots = odometry.shape[0]
+    # Add loop closure at the end
+    final_lc = {'from_node_id': '0_000',
+                'to_node_id': '0_' + str(global_state.shape[0] - 1).zfill(3),
+                'transform': truth[-1,:],
+                'covariance': np.eye(3)*1e-9}
+    loop_closures.append(final_lc)
+
+    num_robots = odometry.shape[2]
 
     # re-arrange these arrays to make things convenient
     odometry = np.transpose(odometry, (2, 1, 0))
     global_state = np.transpose(global_state, (2, 1, 0))
 
-    node_names = ['0_' + str(i).zfill(3) for i in range(global_state.shape[0] + 1)]
+    node_names = ['0_' + str(i).zfill(3) for i in range(global_state.shape[2])]
 
+    # Odometry edges
     edges = [node_names[0:-1], node_names[1:]]
 
     # For each agent, optimize with REO and GTSAM
     for i in range(num_robots):
+        GPO_optimized = GPO_opt(edges, odometry[i, :, :], loop_closures, global_state[i,:,:], Q)
+        REO_optimized = REO_opt(edges, odometry[i, :, :], loop_closures, global_state[i,:,:], Q)
 
-        edge_lists = edges
 
-        # Optimize with Global Pose Optimization
-        GPO = backend_optimizer.Optimizer()
-        GPO.new_graph('0_000', 0)
-        edge_lists.extend(odometry[:,:,i].T.tolist())
-        edges.extend([])
+        plt.figure(1)
+        plt.clf()
+        plt.plot(GPO_optimized[1,:], GPO_optimized[0,:], label='GPO')
+        plt.plot(REO_optimized[1, :], REO_optimized[0,:], label='REO')
+        plt.plot(global_state[i, 1, :], global_state[i, 0, :], label='init')
+        plt.plot(truth[:,1], truth[:,0], label="truth")
+        plt.legend()
 
+
+        plt.show()
+
+        debug = 1
 
 
 

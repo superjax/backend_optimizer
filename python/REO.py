@@ -142,17 +142,16 @@ class REO():
                 if residual[2] <= -np.pi:
                     residual[2] += 2.0*np.pi
 
-                A += mask.dot(H_az.T.dot(this_lc_omega).dot(H_az)).dot(mask.T)
-                b -= mask.dot(H_az.T.dot(this_lc_omega).dot(residual).flatten())
+                A += mask.dot(H_az.T).dot(this_lc_omega).dot(H_az).dot(mask.T)
+                b -= mask.dot(H_az.T).dot(this_lc_omega).dot(residual).flatten()
 
             # Solve
             z_star = scipy.linalg.solve(A, b)
+            diff = scipy.linalg.norm(z_star.flatten())
 
             z_star = z_star.reshape(z_hat.shape, order='F')
 
             z_hat += z_star
-
-            diff = scipy.linalg.norm(z_star.flatten())
             print iter, ":", diff
 
             iter += 1
