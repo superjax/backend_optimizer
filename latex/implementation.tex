@@ -7,8 +7,7 @@ As alluded to before, there are several important details which are critical to 
 % talk about how edges are created
 % talk about simulation simplification, define what an edge means and why we are only doing SE2
 % Talk about specific algorithms being used
-\subsection{Front-end State Estimation}
-Front-end state estimation must take place in real-time onboard a MAV. This state estimator must also provide mutually independent edge constraints to the back-end optimization routine.  In our implementation, we leverage the Relative Multiplicative Extended Kalman Filter (RMEKF)~\cite{Koch2017}, which has been demonstrated as an accurate filter-based front-end estimator which also provides mutually independent edge constraints to build a global pose graph.
+\subsection{Front-end State Estimation}Front-end state estimation must take place in real-time onboard a MAV. This state estimator must also provide mutually independent edge constraints to the back-end optimization routine.  In our implementation, we leverage the Relative Multiplicative Extended Kalman Filter (RMEKF)~\cite{Koch2017}, which has been demonstrated as an accurate filter-based front-end estimator which also provides mutually independent edge constraints to build a global pose graph.
 
 As noted in~\cite{Wheeler2017a}, when operating a MAV over a flat ground plane, only the global position and heading states are unobservable to an agent equipped with relative sensors, an altimeter and an IMU.  Therefore, we only optimize over the unobservable states, which reduces the back-end optimization problem to transforms in $SE(2)$.  Therefore, we define edges as homogeneous transforms in $SE(2)$ as described in section~\ref{sec:relative_edge_optimization_in_se2}.
 
@@ -22,4 +21,4 @@ In addition to odometry constraints from the front-end estimation routine, we al
 \subsection{Recursive Optimization Distribution}
 
 % Talk about what data is being shared
-\subsection{Data Sharing and Communication Network} 
+\subsection{Data Sharing and Communication Network}

@@ -22,6 +22,12 @@ def invert_transform(T):
     psi = -T[2]
     return [dx, dy, psi]
 
+def invert_edges(x, dirs, indexes):
+    for index in indexes:
+        x[:, index] = invert_transform(x[:, index])
+        dirs[index] *= -1.0
+
+
 class REO():
     def __init__(self):
         debug = 1
@@ -82,11 +88,6 @@ class REO():
             f.write('EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n' % (l[3], l[4], l[0], l[1], l[2], lc_omegas[i][0][0], 0, 0, lc_omegas[i][1][1], 0, lc_omegas[i][2][2]))
             i += 1
 
-    def invert_edges(self, x, dirs, indexes):
-        for index in indexes:
-            x[:, index] = self.invert_transform(x[:, index])
-            dirs[index] *= -1.0
-
     def optimize(self, z_bar, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, iters, epsilon, x0 = [], randomize=False):
 
         # create giant combined omega
@@ -115,7 +116,7 @@ class REO():
                 elif psi <= -np.pi:
                     psi += 2.0*np.pi
 
-            A = Omega
+            A = Omega.copy()
             b = -Omega.dot(delta.flatten(order='F'))
 
             for i in range(len(cycles)):
