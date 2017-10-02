@@ -21,7 +21,7 @@ Wheeler et al.~\cite{Wheeler2017a} shows that framing the navigation problem int
 In the relative state estimation framework~\cite{Koch2017}, states are estimated with respect to a locally-observable ``keyframe'' image or laser scan.  As this keyframe goes out of view, another is declared and global position and heading states are reset to zero.  Uncertainty of these states is also reset to zero, as they are defined with respect to that keyframe, which is known with absolute certainty at the time of the reset.  The reset step in the relative estimator provides a clear mechanism to create mutually independent edge constraints for a pose graph.  Prior to the incorporation of loop closures, the vehicle's global pose can be calculated by traversing from the origin of the graph to the current keyframe, compounding edge constraints and finally adding the relative state.  Uncertainty in these states can be calculated using higher order methods such as those described by Barfoot et al. in ~\cite{Barfoot2014}.  After loop closures, global states can be calculated using pose-graph optimization techniques such as g$^2$o~\cite{Kummerle2011}, or iSAM2~\cite{Kaess2012}.  See Figure~\ref{fig:pose_graph} for an illustration of a pose graph.
 
 \begin{figure}
-  \includegraphics[width=0.7\textwidth]{figures/pose_graph.jpg}
+  \input{figures/simple_graph}
   \caption{Illustration of a typical pose graph with a single loop closure}
   \label{fig:pose_graph}
 \end{figure}

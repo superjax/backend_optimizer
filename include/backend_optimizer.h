@@ -62,11 +62,6 @@ private:
 
 };
 
-class Edge
-{
-
-};
-
 } // namespace backend_optimizer
 
 #endif // backendOptimizer_H

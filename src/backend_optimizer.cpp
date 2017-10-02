@@ -29,6 +29,7 @@ BackendOptimizer::BackendOptimizer() :
 // create a new graph, fixed at the fixed_node
 int BackendOptimizer::new_graph(std::string fixed_node, int id)
 {
+  optimizer_.clear();
   agent_id_ = id;
   edge_constraints_.clear();
   edge_list_.clear();

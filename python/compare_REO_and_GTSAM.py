@@ -18,44 +18,52 @@ def get_global_pose(edges, x0):
     return x
 
 def generate_house():
+    num_robots = 10000
     perfect_edges = np.array([[1., 1., 1., 1., 2 ** 0.5, 2 ** 0.5 / 2.0, 2 ** 0.5 / 2.0, 2 ** 0.5],
                               [0., 0., 0., 0., 0, 0, 0, 0],
-                              [np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 3.0 * np.pi / 4.0, np.pi / 2.0, np.pi / 2.0,
-                               np.pi / 2.0, 0]])
+                              [np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 3.0 * np.pi / 4.0, np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 0]])
 
     x0 = np.array([0, 0, 0])
     x0_rot = np.array([0, 0, np.pi])
 
     dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    Omegas = [np.diag([5., 8., 3.]) for i in range(perfect_edges.shape[1])]
+    # Omegas = [np.diag([1e6, 1e6, 2]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([1e2, 1e2, 1e3]) for i in range(perfect_edges.shape[1])]
 
-    edge_noise = np.array([[np.random.normal(0, 1. / Omegas[i][0][0]) for i in range(perfect_edges.shape[1])],
-                           [np.random.normal(0, 1. / Omegas[i][1][1]) for i in range(perfect_edges.shape[1])],
-                           [np.random.normal(0, 1. / Omegas[i][2][2]) for i in range(perfect_edges.shape[1])]])
-
-    noisy_edges = perfect_edges + edge_noise
-
+    odometry = np.zeros((num_robots, 3, perfect_edges.shape[1]))
+    global_estimate = np.zeros((num_robots, 3, perfect_edges.shape[1]+1))
     truth = get_global_pose(perfect_edges, x0.copy())
-    global_estimate = get_global_pose(noisy_edges, x0.copy())
+    for robot in range(num_robots):
+        edge_noise = np.array([[np.random.normal(0, 1. / Omegas[i][0][0]) for i in range(perfect_edges.shape[1])],
+                               [np.random.normal(0, 1. / Omegas[i][1][1]) for i in range(perfect_edges.shape[1])],
+                               [np.random.normal(0, 1. / Omegas[i][2][2]) for i in range(perfect_edges.shape[1])]])
+
+        noisy_edges = perfect_edges + edge_noise
+        odometry[robot,:,:] = noisy_edges + edge_noise
+        global_estimate[robot,:,:] = get_global_pose(noisy_edges, x0.copy())
 
     # invert_edges(perfect_edges, dirs, [5, 7, 2])
 
-    lc = np.array([[0.0, 0.0, 0.0, 1.0, 1.0, 1],
-                   [1.0, 1.0, 0.0, 0.0, 1.0, 0.],
-                   [-np.pi / 4.0, -np.pi / 2.0, np.pi / 4.0, np.pi/2.0, 3 * np.pi / 4.0, np.pi / 4.0]])
-    lc_omega = [np.diag([100, 100, 1000]) for i in range(lc.shape[1])]
-    lc_dir = np.array([1, 1, 1, 1, 1, 1])
+    lc = np.array([[0.0, 0.0, 1.0, 1.0, 0.5,      1., 0., 2.**0.5/2., 1.5],
+                   [1.0, 0.0, 1.0, 1.0, 1.5,      0., 0., 2.**0.5/2., 0.5],
+                   [-np.pi / 4.0, np.pi / 4.0, 3.*np.pi / 4.0, -np.pi, -3. * np.pi / 4.0,       3.*np.pi/4., -np.pi/4., -np.pi/2., 3.*np.pi/4.]])
+    lc_omega = [np.diag([1e5, 1e5, 1e5]) for i in range(lc.shape[1])]
+    lc_dir = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1])
 
     cycles = [['0_'+str(i).zfill(3) for i in range(perfect_edges.shape[1])],
-              ['0_'+str(i).zfill(3) for i in range(4)],
               ['0_'+str(i).zfill(3) for i in range(5)],
-              ['0_'+str(i).zfill(3) for i in range(2)],
               ['0_'+str(i).zfill(3) for i in range(6)],
-              ['0_'+str(i+ 1).zfill(3)  for i in range(5)]]
+              ['0_'+str(i).zfill(3) for i in range(3)],
+              ['0_'+str(i).zfill(3) for i in range(7)],
+
+              ['0_' + str(i+3).zfill(3) for i in range(2)],
+              ['0_' + str(i+2).zfill(3) for i in range(4)],
+              ['0_' + str(i+4).zfill(3) for i in range(4)],
+              ['0_' + str(i+1).zfill(3) for i in range(6)]]
 
     # Turn off some loop closures
-    active_lc = [0, 1, 2, 3, 4, 5]
+    active_lc = [1,2,3,4,5,6,7,8]
     lc = lc[:, active_lc]
     lc_omega = [lc_omega[i] for i in active_lc]
     lc_dir = lc_dir[active_lc, None]
@@ -66,8 +74,8 @@ def generate_house():
 
     f = open('MC_trajectories.pkl', 'wb')
     data = dict()
-    data['odometry'] = np.array([noisy_edges])
-    data['global_state'] = np.array([global_estimate])
+    data['odometry'] = odometry
+    data['global_state'] = global_estimate
     data['truth'] = truth.T
     data['Q'] = scipy.linalg.inv(Omegas[0])
 
@@ -161,17 +169,17 @@ def generate_data():
 
     pickle.dump(data, f)
 
-def GPO_opt(edges, odometry, lc, global_state, Q):
-    edge_lists = edges
+def GPO_opt(edge_names, odom, lcs, gst, Q):
+    edge_lists = list(edge_names)
 
     # Optimize with Global Pose Optimization
     GPO = backend_optimizer.Optimizer()
     GPO.new_graph('0_000', 0)
-    edge_lists.extend(odometry.tolist())
-    edge_lists.extend([[Q[0][0] for j in range(odometry.shape[1])]])
-    edge_lists.extend([[Q[1][1] for j in range(odometry.shape[1])]])
-    edge_lists.extend([[Q[2][2] for j in range(odometry.shape[1])]])
-    for lc in loop_closures:
+    edge_lists.extend(odom.tolist())
+    edge_lists.extend([[Q[0][0] for j in range(odom.shape[1])]])
+    edge_lists.extend([[Q[1][1] for j in range(odom.shape[1])]])
+    edge_lists.extend([[Q[2][2] for j in range(odom.shape[1])]])
+    for lc in lcs:
         edge_lists[0].append(lc['from_node_id'])
         edge_lists[1].append(lc['to_node_id'])
         edge_lists[2].append(lc['transform'][0])
@@ -182,18 +190,20 @@ def GPO_opt(edges, odometry, lc, global_state, Q):
         edge_lists[7].append(lc['covariance'][2][2])
 
     node_lists = [node_names[1:]]
-    node_lists.extend(global_state[:, 1:].tolist())
+    node_lists.extend(gst[:, 1:].tolist())
 
     nodes_transpose = [list(j) for j in zip(*node_lists)]
     edges_transpose = [list(j) for j in zip(*edge_lists)]
 
     GPO.add_edge_batch(nodes_transpose, edges_transpose)
+    for i in range(10):
+        GPO.optimize()
     out_dict = GPO.get_optimized()
-    global_pose = []
+    opt_pose = []
     for node in out_dict['nodes']:
-        global_pose.append(node[1:])
-    global_pose = np.array(global_pose)
-    return global_pose.T
+        opt_pose.append(node[1:])
+    opt_pose = np.array(opt_pose)
+    return opt_pose.T.copy()
 
 def REO_opt(edges, odometry, loop_closures, global_state, Q):
 
@@ -217,9 +227,9 @@ def REO_opt(edges, odometry, loop_closures, global_state, Q):
         else:
             cycle = range(to_id, from_id)
         cycles.append(cycle)
-    z_hat, diff = reo.optimize(odometry, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, 100, 1e-5)
+    z_hat, diff, iter = reo.optimize(odometry, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, 100, 1e-5)
     x_hat = get_global_pose(z_hat, np.array([0, 0, 0]))
-    return x_hat
+    return x_hat, iter
 
 
 if __name__ == '__main__':
@@ -252,23 +262,66 @@ if __name__ == '__main__':
     edges = [node_names[0:-1], node_names[1:]]
 
     # For each agent, optimize with REO and GTSAM
-    for i in range(num_robots):
-        GPO_optimized = GPO_opt(edges, odometry[i, :, :], loop_closures, global_state[i,:,:], Q)
-        REO_optimized = REO_opt(edges, odometry[i, :, :], loop_closures, global_state[i,:,:], Q)
+    REO_error_list = []
+    GPO_error_list = []
+    diff_error_list = []
+    REO_avg_iter_sum = 0.
+    error_threshold = 15.
+    REO_correct_count = 0
+    GPO_correct_count = 0
+    for i in tqdm(range(num_robots)):
+        # truth_optimized = GPO_opt(edges, odometry[i, :, :], loop_closures, truth.T, Q)
+        GPO_optimized = GPO_opt(edges, odometry[i, :, :].copy(), loop_closures, global_state[i,:,:].copy(), Q)
+        REO_optimized, REO_iters = REO_opt(edges, odometry[i, :, :].copy(), loop_closures, global_state[i,:,:], Q)
 
+        # initial_error = scipy.linalg.norm(global_state - truth.T)
+        REO_error = scipy.linalg.norm(REO_optimized[0:2,:] - truth.T[0:2,:])
+        diff_error = np.sum(scipy.linalg.norm(REO_optimized[0:2, :] - GPO_optimized[0:2, :], axis=0))
+        GPO_error = scipy.linalg.norm(GPO_optimized[0:2,:] - truth.T[0:2,:])
 
-        plt.figure(1)
-        plt.clf()
-        plt.plot(GPO_optimized[1,:], GPO_optimized[0,:], label='GPO')
-        plt.plot(REO_optimized[1, :], REO_optimized[0,:], label='REO')
-        plt.plot(global_state[i, 1, :], global_state[i, 0, :], label='init')
-        plt.plot(truth[:,1], truth[:,0], label="truth")
-        plt.legend()
+        # print "REO:", REO_error, "GPO:", GPO_error
 
+        REO_error_list.append(REO_error)
+        GPO_error_list.append(GPO_error)
+        diff_error_list.append(diff_error)
+        REO_avg_iter_sum += float(REO_iters)
 
-        plt.show()
+        # if REO_error < 0.5:
+        #     REO_correct_count += 1
+        # if GPO_error < 0.5:
+        #     GPO_correct_count += 1
 
-        debug = 1
+        # plt.figure(1)
+        # plt.clf()
+        # plt.plot(GPO_optimized[1,:], GPO_optimized[0,:], label='GPO')
+        # plt.plot(REO_optimized[1, :], REO_optimized[0,:], label='REO')
+        # plt.plot(global_state[i, 1, :], global_state[i, 0, :], label='init')
+        # # plt.plot(truth_optimized[1,:], truth_optimized[0,:], label="truth")
+        # plt.plot(truth.T[1, :], truth.T[0, :], label="truth")
+        # plt.legend()
+        #
+        # plt.show()
+
+    print "avg REO error:", sum(REO_error_list)/float(num_robots)
+    print "avg GPO error:", sum(GPO_error_list) / float(num_robots)
+    print "avg REO iter:", REO_avg_iter_sum / float(num_robots)
+    print "num REO correct:", REO_correct_count
+    print "num GPO correct:", GPO_correct_count
+
+    plt.figure(1)
+    plt.clf()
+    plt.subplot(122)
+    plt.title("GPO - REO RMS error")
+    plt.hist(diff_error_list, 50, normed=1, facecolor="red", alpha=0.5)
+    plt.subplot(221)
+    plt.title("REO RMS error")
+    plt.hist(REO_error_list, 100, normed=1, facecolor="blue", alpha=0.5)
+    plt.subplot(223)
+    plt.title("GPO RMS error")
+    plt.hist(GPO_error_list, 50, normed=1, facecolor="green", alpha=0.5)
+
+    plt.show()
+
 
 
 

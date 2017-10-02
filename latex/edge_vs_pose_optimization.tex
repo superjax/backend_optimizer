@@ -3,31 +3,44 @@
 \section{Comparison: Relative Edge vs. Pose Optimization}
 
 \begin{figure}
-  \includegraphics[width=0.7\textwidth]{figures/house_trajectory.jpg}
-  \caption{One sample from a house trajectory with optimization results from relative edge optimization and global pose optimization}
+  \includegraphics[width=0.7\textwidth]{figures/house_trajectory.png}
+  \caption{One sample from the well-conditioned house trajectory with identical optimization results from relative edge optimization and global pose optimization}
   \label{fig:house_trajectory}
 \end{figure}
 
 \begin{figure}
-  \includegraphics[width=0.7\textwidth]{figures/convergence_comparison_house.jpg}
-  \caption{Convergence for the house trajectory}
+  \includegraphics[width=\textwidth]{figures/REO_vs_GPO_good.png}
+  \caption{RMS error between optimized poses found by relative edge optimization and global pose optimization for a simulation study of 10,000 well-conditioned house trajectories.}
   \label{fig:convergence_house}
 \end{figure}
 
 % show that they are equivalent
-It can be plainly observed from comparing Eq~\ref{eqn:global_opt} and Eq~\ref{eqn:relative_opt} that relative edge optimization simply parametertizes the same cost function with relative edge constraints as opposed to global constraints, and therefore should result in an equivalent solution.  However, due to the different linearization between the two parameterizations, a simulation study was performed to show the equivalence of global pose and edge-based optimization. This was performed by optimization a house-shaped trajectory, shown in Figure~\ref{fig:house_trajectory} which was corrupted with random gaussian noise, had a random selction of edges were reversed and a loop closure placed between nodes at the bottom left corner of the trajectory. Every one of these optimizations produced identical results between global pose and edge-based optimization with a comparable number of iterations, shown in Figure~\ref{fig:convergence_house}.
+It can be plainly observed from comparing Eq~\ref{eqn:global_opt} and Eq~\ref{eqn:relative_opt} that relative edge optimization simply parametertizes the same cost function with relative edge constraints as opposed to global constraints, and therefore should result in an equivalent solution.  However, due to the different linearization between the two parameterizations, a simulation study was performed to show the equivalence of global pose and edge-based optimization. This was performed by optimization of a house-shaped trajectory, shown in Figure~\ref{fig:house_trajectory} which was corrupted with random gaussian noise, had a random selction of edges were reversed and a loop closure placed between nodes at the bottom left corner of the trajectory. This was repeated 10,000 times.  To evaluate performance of these optimizations, we employed the following RMS error metric, which can be described as the difference between the optimized global pose positions found by optimizer $j$ and optimizer $l$.
+
+\begin{align}
+    J_{RMS}(\xhat^j, \xhat^l) = \sum_{i=0}^n \lVert \xhat^j_i - \xhat^l_i \rVert
+\end{align}
+
+In the case of low heading error, every one of these optimizations produced virtually identical results between global pose and edge-based optimization.  A histogram of RMS error between the global pose of each node of the solution found by both optimizations is shown in Figure~\ref{fig:convergence_house}.  The iSAM2 package implemented in GTSAM was used as the global pose optimization algorithm, while an implementation of Algorithm~\ref{algo:reversed} was used for relative edge optimization
 
 % describe differences (pros/cons)
-Differences between the performance of global pose graph and relative edge-based optimizations can be observed by stressing linearization errors in the various parameterizations.  For example, if the house trajectory is initialized with a 180$^\circ$ heading error, and provided global measurements, the global pose optimization often struggles to find the global minimum.  A similar experiment with 10,000 house trajectories was performed, except with the addition of a global measurement located at the peak of the house.  In this study, the pose graph optimization failed to converge to the correct optimum (As shown in Figure~\ref{fig:g2o_heading_divergence}) $20\%$ of the time, came to the same result but took more iterations as relative edge optimization $50\%$ of the time, and performed equivalently (same number of iterations, same result) the remaining $30\%$ of the time.
+Differences between the performance of global pose graph and relative edge-based optimizations can be observed by stressing linearization errors in the various parameterizations.  As an example, a random house trajectory was generated with perfect translation measurements, but heading errors sampled from $\mathcal{N}(0, 40^\circ)$. Five perfect randomly assigned loop closures were added to the trajectory and the trajectory was given to both GPO and REO.  This process was repeated 1,000 times.  Figure~\ref{fig:GPO_heading_divergence} shows an example of one of these trajectories.  RMS error between the final global pose of each node of the true trajectory and the optimized result was also calculated for each optimization algorithm. REO was able to converge to within 0.0005m of the true solution every time, while GPO was never able to find the correct solution.
 
-\begin{figure}[H]
-  \includegraphics[width=0.7\textwidth]{figures/house_g2o_diverged.jpg}
-  \caption{One sample from simulation study with a single global measurement added to peak of house trajectory,  initialized with a 180$^\circ$ heading error.  In this simulation, the global pose optimization failed to find the correct optimum.}
-  \label{fig:g2o_heading_divergence}
-\end{figure}
+ % For example, if the house trajectory is initialized with a 180$^\circ$ heading error, and provided global measurements via a virtual zero per the method described in~\cite{CITE}, the global pose optimization often struggles to find the global minimum.  A similar experiment with 10,000 house trajectories was performed, except with the addition of a global measurement located at the peak of the house.  In this study, the pose graph optimization failed to converge to the correct optimum (As shown in Figure~\ref{fig:GPO_heading_divergence}) $20\%$ of the time, came to the same result but took more iterations as relative edge optimization $50\%$ of the time, and performed equivalently (same number of iterations, same result) the remaining $30\%$ of the time.
+
+ \begin{figure}[H]
+   \includegraphics[width=0.7\textwidth]{figures/GPO_diverged.png}
+   \caption{One sample from simulation study with perfect translation measurements, five randomly assigned perfect loop closure constraints and significant heading error.  In this case, REO found the true solution while GPO diverged.}
+   \label{fig:GPO_heading_divergence}
+ \end{figure}
+
+ \begin{figure}[H]
+   \includegraphics[width=0.7\textwidth]{figures/GPO_vs_REO_bad.png}
+   \caption{histogram of RMS error calculated for the final global position of each node after each of 1000 optimizations with significant heading error, but perfect translation measurements and five randomly assigned, perfect loop closure constraints.  REO was able to find the true soultion to within 0.0005m for each trajectory, with a mean error of 0.00011m.  GPO never converged to the correct solution.}
+   \label{fig:GPO_bad_histogram}
+ \end{figure}
 
 While relative edge optimization promises significant improvements in dealing with initialization errors when compared with global pose optimization, it is not as easily scaleable as global pose graph optimization.  In particular, the calculation of $\frac {\partial\Delta t_{a-z}}{\partial\Delta t_{ij}}$ causes significant correlations between edge estimates in a loop closure.  This ultimately leads to a loss of sparsity in the calculation of $\mathbf{H}_{az}^\top \Omega_{az} \mathbf{H}_{az}$ in Equation~\ref{eqn:3d_opt}.  The parameterization of global pose optimization however, does not run into this issue and can therefore exploit sparsity in solving for $\Delta \mathbf{x}$.  This becomes most important when considering a loop closure with a large number of edges where a dense matrix decomposition can be very costly. Secondly, in typical pose graph implementation, the number of edges can grow explosively if an agent repeatedly navigates the same area.  In this situation, the sum in the second term of the cost function in Equation~\ref{eqn:cost_function} can become extremely large and costly to calculate.
-
 
 % how to use them together
 To overcome these issue, we propose a two-fold solution.  To reduce the number of terms summed in the second term of Equation~\ref{eqn:cost_function}, we propose stochastically iterating over smaller loop closures in a well-connected pose graph and optimizing only a selection at a time.  To reduce the size of the optimization, we will exploit the relative nature of edge-based optimization to recursively break the full optimization into small, easy-to-manage problems.  This recursive process has the added benefit of producing completely parallelizeable independent computations which can be distributed to a GPU for fast evaluation.  While these solutions improve the scaleability of edge optimization, it still does not compete with the state-of-the-art global pose graph optimization libraries in terms of speed.  Due to the different parameterization, however, it can quickly bring a poorly initialized graph into a region where global pose graph optimization can quickly and reliably converge to a solution.  Therefore, we propose that edge optimization be performed for just a few iterations in situations where global pose graphs may struggle to find global minima to initialize the graph.  After much of the error has been removed by the more expensive, but less sensitive edge optimization, global pose graph optimization can very quickly find a global minima even in highly-connected and complicated graphs, where repeated edge optimization may become intractable.

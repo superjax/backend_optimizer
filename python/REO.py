@@ -122,7 +122,7 @@ class REO():
             for i in range(len(cycles)):
                 this_edges = z_hat[:, cycles[i]]
                 this_dirs = dirs[cycles[i]]
-                this_lc = lcs[:, i, None]
+                this_lc = lcs[:, i]
                 this_lc_omega = lc_omegas[i]
 
                 # Create the mask to put the edges in their place when we are done
@@ -153,34 +153,30 @@ class REO():
             z_star = z_star.reshape(z_hat.shape, order='F')
 
             z_hat += z_star
-            print iter, ":", diff
+            # print iter, ":", diff
 
             iter += 1
 
         # Update estimate
-        return z_hat, diff
+        return z_hat, diff, iter
 
-    def compound_arbitrary_edges(self, z, dirs, cycle):
-        p = np.zeros((3,1))
-        for i in cycle:
-            if dirs[i] > 0:
-                p += np.concatenate((self.R(p[2][0]).dot(z[0:2,i, None]), z[2,i,None, None]))
+    def compound_edges(self, z, dirs):
+        p = np.zeros(3)
+        i = 0
+        for d, edge in zip(dirs, z.T):
+            if d > 0:
+                p = concatenate_transform(p, edge)
             else:
-                p -= np.concatenate((self.R(p[2][0] - z[2,i]).dot(z[0:2,i, None]), z[2,i,None, None]))
-
-            # wrap angle to +/- pi
-            if p[2][0] > np.pi:
-                p[2][0] -= 2.0*np.pi
-            if p[2][0] <= -np.pi:
-                p[2][0] += 2.0*np.pi
+                p = concatenate_transform(p, invert_transform(edge))
 
             # print p
 
+            # wrap angle to +/- pi
+            if p[2] > np.pi:
+                p[2] -= 2.0 * np.pi
+            if p[2] <= -np.pi:
+                p[2] += 2.0 * np.pi
         return p
-
-    def compound_edges(self, z, dirs):
-        return self.compound_arbitrary_edges(z, dirs, [i for i in range(len(dirs))])
-
 
     def calc_jacobian_of_string_with_reversed_edges(self, z, dirs):
 
