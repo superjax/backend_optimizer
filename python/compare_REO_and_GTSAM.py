@@ -18,7 +18,7 @@ def get_global_pose(edges, x0):
     return x
 
 def generate_house():
-    num_robots = 1000
+    num_robots = 10000
     perfect_edges = np.array([[1., 1., 1., 1., 2 ** 0.5, 2 ** 0.5 / 2.0, 2 ** 0.5 / 2.0, 2 ** 0.5],
                               [0., 0., 0., 0., 0, 0, 0, 0],
                               [np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 3.0 * np.pi / 4.0, np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 0]])
@@ -51,16 +51,16 @@ def generate_house():
     lc_omega = [np.diag([1e5, 1e5, 1e5]) for i in range(lc.shape[1])]
     lc_dir = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    cycles = [['0_'+str(i).zfill(3) for i in range(perfect_edges.shape[1])],
-              ['0_'+str(i).zfill(3) for i in range(5)],
-              ['0_'+str(i).zfill(3) for i in range(6)],
-              ['0_'+str(i).zfill(3) for i in range(3)],
-              ['0_'+str(i).zfill(3) for i in range(7)],
+    cycles = [['0_'+str(i).zfill(3) for i in range(perfect_edges.shape[1] + 1)],
+              ['0_'+str(i).zfill(3) for i in range(5+1)],
+              ['0_'+str(i).zfill(3) for i in range(6+1)],
+              ['0_'+str(i).zfill(3) for i in range(3+1)],
+              ['0_'+str(i).zfill(3) for i in range(7+1)],
 
-              ['0_' + str(i+3).zfill(3) for i in range(2)],
-              ['0_' + str(i+2).zfill(3) for i in range(4)],
-              ['0_' + str(i+4).zfill(3) for i in range(4)],
-              ['0_' + str(i+1).zfill(3) for i in range(6)]]
+              ['0_' + str(i+3).zfill(3) for i in range(2+1)],
+              ['0_' + str(i+2).zfill(3) for i in range(4+1)],
+              ['0_' + str(i+4).zfill(3) for i in range(4+1)],
+              ['0_' + str(i+1).zfill(3) for i in range(6+1)]]
 
     # Turn off some loop closures
     active_lc = [0,1]
@@ -223,9 +223,9 @@ def REO_opt(edges, odom, loops, gst, cov):
         from_id = int(loops[i]['from_node_id'].split('_')[1])
         to_id = int(loops[i]['to_node_id'].split('_')[1])
         if to_id > from_id:
-            cycle = range(from_id, to_id+1)
+            cycle = range(from_id, to_id)
         else:
-            cycle = range(to_id, from_id+1)
+            cycle = range(to_id, from_id)
         cycles.append(cycle)
     z_hat, diff, iter = reo.optimize(odom, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, 100, 1e-8)
     x_hat = get_global_pose(z_hat, np.array([0, 0, 0]))
