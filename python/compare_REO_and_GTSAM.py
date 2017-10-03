@@ -28,7 +28,7 @@ def generate_house():
 
     dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    Omegas = [np.diag([1e6, 1e6, 3]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([1e2, 1e2, 1e3]) for i in range(perfect_edges.shape[1])]
     # Omegas = [np.diag([1e2, 1e2, 1e3]) for i in range(perfect_edges.shape[1])]
 
     odometry = np.zeros((num_robots, 3, perfect_edges.shape[1]))
@@ -63,7 +63,7 @@ def generate_house():
               ['0_' + str(i+1).zfill(3) for i in range(6)]]
 
     # Turn off some loop closures
-    active_lc = [1,2,3,4,5,6,7,8]
+    active_lc = [0,1]
     lc = lc[:, active_lc]
     lc_omega = [lc_omega[i] for i in active_lc]
     lc_dir = lc_dir[active_lc, None]
@@ -290,7 +290,7 @@ if __name__ == '__main__':
             REO_correct_count += 1
         if GPO_error < 0.5:
             GPO_correct_count += 1
-        if False:#REO_error > 1 or GPO_error > 1:
+        if REO_error > 1 or GPO_error > 1:
             print "REO error = ", REO_error
             print "GPO_error = ", GPO_error
             plt.figure(1)
@@ -316,15 +316,15 @@ if __name__ == '__main__':
 
     plt.figure(1)
     plt.clf()
-    # plt.subplot(122)
-    # plt.title("GPO - REO RMS error")
-    # plt.hist(diff_error_list, 50, normed=1, facecolor="red", alpha=0.5)
-    plt.subplot(211)
+    plt.subplot(122)
+    plt.title("GPO - REO RMS error")
+    plt.hist(diff_error_list, 50, normed=1, facecolor="red", alpha=0.5)
+    plt.subplot(221)
     plt.title("REO RMS error")
-    plt.hist(REO_error_list, 100, normed=1, facecolor="blue", alpha=0.5, range=[0, 0.001])
-    plt.subplot(212)
+    plt.hist(REO_error_list, 100, normed=1, facecolor="blue", alpha=0.5)
+    plt.subplot(223)
     plt.title("GPO RMS error")
-    plt.hist(GPO_error_list, 100, normed=1, facecolor="green", alpha=0.5, range=[0, 20])
+    plt.hist(GPO_error_list, 100, normed=1, facecolor="green", alpha=0.5)
 
     plt.show()
 
