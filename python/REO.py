@@ -11,6 +11,10 @@ def concatenate_transform(T1, T2):
     x = T1[0] + T2[0] * cs - T2[1] * ss
     y = T1[1] + T2[0] * ss + T2[1] * cs
     psi = T1[2] + T2[2]
+    if psi > np.pi:
+        psi -= 2.*np.pi
+    elif psi < -np.pi:
+        psi += 2.*np.pi
     return [x, y, psi]
 
 

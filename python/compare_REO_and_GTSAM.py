@@ -18,7 +18,7 @@ def get_global_pose(edges, x0):
     return x
 
 def generate_house():
-    num_robots = 10000
+    num_robots = 1000
     perfect_edges = np.array([[1., 1., 1., 1., 2 ** 0.5, 2 ** 0.5 / 2.0, 2 ** 0.5 / 2.0, 2 ** 0.5],
                               [0., 0., 0., 0., 0, 0, 0, 0],
                               [np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 3.0 * np.pi / 4.0, np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 0]])
@@ -28,8 +28,8 @@ def generate_house():
 
     dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    # Omegas = [np.diag([1e6, 1e6, 2]) for i in range(perfect_edges.shape[1])]
-    Omegas = [np.diag([1e2, 1e2, 1e3]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([1e6, 1e6, 3]) for i in range(perfect_edges.shape[1])]
+    # Omegas = [np.diag([1e2, 1e2, 1e3]) for i in range(perfect_edges.shape[1])]
 
     odometry = np.zeros((num_robots, 3, perfect_edges.shape[1]))
     global_estimate = np.zeros((num_robots, 3, perfect_edges.shape[1]+1))
@@ -45,9 +45,9 @@ def generate_house():
 
     # invert_edges(perfect_edges, dirs, [5, 7, 2])
 
-    lc = np.array([[0.0, 0.0, 1.0, 1.0, 0.5,      1., 0., 2.**0.5/2., 1.5],
-                   [1.0, 0.0, 1.0, 1.0, 1.5,      0., 0., 2.**0.5/2., 0.5],
-                   [-np.pi / 4.0, np.pi / 4.0, 3.*np.pi / 4.0, -np.pi, -3. * np.pi / 4.0,       3.*np.pi/4., -np.pi/4., -np.pi/2., 3.*np.pi/4.]])
+    lc = np.array([[1.0, 1.0, 0.5, 0.0, 0.0,      0., 0.5, 2.**0.5/2., 1.0],
+                   [0.0, 1.0, 1.5, 1.0, 1.0,      1., -0.5, -2.**0.5/2., 1.0],
+                   [-np.pi / 4.0, 3.*np.pi / 4.0, -3.*np.pi / 4.0, -np.pi/2.0, -np.pi / 4.0,       -3.*np.pi/4., np.pi/4., -np.pi/2., -3.*np.pi/4.]])
     lc_omega = [np.diag([1e5, 1e5, 1e5]) for i in range(lc.shape[1])]
     lc_dir = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1])
 
@@ -169,16 +169,16 @@ def generate_data():
 
     pickle.dump(data, f)
 
-def GPO_opt(edge_names, odom, lcs, gst, Q):
+def GPO_opt(edge_names, odom, lcs, gst, cov):
     edge_lists = list(edge_names)
 
     # Optimize with Global Pose Optimization
     GPO = backend_optimizer.Optimizer()
     GPO.new_graph('0_000', 0)
     edge_lists.extend(odom.tolist())
-    edge_lists.extend([[Q[0][0] for j in range(odom.shape[1])]])
-    edge_lists.extend([[Q[1][1] for j in range(odom.shape[1])]])
-    edge_lists.extend([[Q[2][2] for j in range(odom.shape[1])]])
+    edge_lists.extend([[cov[0][0] for j in range(odom.shape[1])]])
+    edge_lists.extend([[cov[1][1] for j in range(odom.shape[1])]])
+    edge_lists.extend([[cov[2][2] for j in range(odom.shape[1])]])
     for lc in lcs:
         edge_lists[0].append(lc['from_node_id'])
         edge_lists[1].append(lc['to_node_id'])
@@ -205,29 +205,29 @@ def GPO_opt(edge_names, odom, lcs, gst, Q):
     opt_pose = np.array(opt_pose)
     return opt_pose.T.copy()
 
-def REO_opt(edges, odometry, loop_closures, global_state, Q):
+def REO_opt(edges, odom, loops, gst, cov):
 
     reo = REO()
-    dirs = np.ones(odometry.shape[1])
-    Qinv = scipy.linalg.inv(Q)
-    Omegas = [Qinv for i in range(odometry.shape[1])]
+    dirs = np.ones(odom.shape[1])
+    Qinv = scipy.linalg.inv(cov)
+    Omegas = [Qinv for i in range(odom.shape[1])]
 
     lc_dirs = []
-    lcs = np.zeros((3, len(loop_closures)))
+    lcs = np.zeros((3, len(loops)))
     lc_omegas = []
     cycles = []
-    for i in range(len(loop_closures)):
+    for i in range(len(loops)):
         lc_dirs.append(1)
-        lc_omegas.append(scipy.linalg.inv(loop_closures[i]['covariance']))
-        lcs[:,i] = np.array(loop_closures[i]['transform'])
-        from_id = int(loop_closures[i]['from_node_id'].split('_')[1])
-        to_id = int(loop_closures[i]['to_node_id'].split('_')[1])
+        lc_omegas.append(scipy.linalg.inv(loops[i]['covariance']))
+        lcs[:,i] = np.array(loops[i]['transform'])
+        from_id = int(loops[i]['from_node_id'].split('_')[1])
+        to_id = int(loops[i]['to_node_id'].split('_')[1])
         if to_id > from_id:
-            cycle = range(from_id, to_id)
+            cycle = range(from_id, to_id+1)
         else:
-            cycle = range(to_id, from_id)
+            cycle = range(to_id, from_id+1)
         cycles.append(cycle)
-    z_hat, diff, iter = reo.optimize(odometry, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, 100, 1e-5)
+    z_hat, diff, iter = reo.optimize(odom, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, 100, 1e-8)
     x_hat = get_global_pose(z_hat, np.array([0, 0, 0]))
     return x_hat, iter
 
@@ -272,12 +272,12 @@ if __name__ == '__main__':
     for i in tqdm(range(num_robots)):
         # truth_optimized = GPO_opt(edges, odometry[i, :, :], loop_closures, truth.T, Q)
         GPO_optimized = GPO_opt(edges, odometry[i, :, :].copy(), loop_closures, global_state[i,:,:].copy(), Q)
-        REO_optimized, REO_iters = REO_opt(edges, odometry[i, :, :].copy(), loop_closures, global_state[i,:,:], Q)
+        REO_optimized, REO_iters = REO_opt(edges, odometry[i, :, :].copy(), loop_closures, global_state[i,:,:].copy(), Q)
 
         # initial_error = scipy.linalg.norm(global_state - truth.T)
-        REO_error = scipy.linalg.norm(REO_optimized[0:2,:] - truth.T[0:2,:])
+        REO_error = np.sum(scipy.linalg.norm(REO_optimized[0:2,:] - truth.T[0:2,:], axis=0))
         diff_error = np.sum(scipy.linalg.norm(REO_optimized[0:2, :] - GPO_optimized[0:2, :], axis=0))
-        GPO_error = scipy.linalg.norm(GPO_optimized[0:2,:] - truth.T[0:2,:])
+        GPO_error = np.sum(scipy.linalg.norm(GPO_optimized[0:2,:] - truth.T[0:2,:], axis=0))
 
         # print "REO:", REO_error, "GPO:", GPO_error
 
@@ -286,21 +286,27 @@ if __name__ == '__main__':
         diff_error_list.append(diff_error)
         REO_avg_iter_sum += float(REO_iters)
 
-        # if REO_error < 0.5:
-        #     REO_correct_count += 1
-        # if GPO_error < 0.5:
-        #     GPO_correct_count += 1
-
-        # plt.figure(1)
-        # plt.clf()
-        # plt.plot(GPO_optimized[1,:], GPO_optimized[0,:], label='GPO')
-        # plt.plot(REO_optimized[1, :], REO_optimized[0,:], label='REO')
-        # plt.plot(global_state[i, 1, :], global_state[i, 0, :], label='init')
-        # # plt.plot(truth_optimized[1,:], truth_optimized[0,:], label="truth")
-        # plt.plot(truth.T[1, :], truth.T[0, :], label="truth")
-        # plt.legend()
-        #
-        # plt.show()
+        if REO_error < 0.5:
+            REO_correct_count += 1
+        if GPO_error < 0.5:
+            GPO_correct_count += 1
+        if False:#REO_error > 1 or GPO_error > 1:
+            print "REO error = ", REO_error
+            print "GPO_error = ", GPO_error
+            plt.figure(1)
+            plt.clf()
+            plt.plot(GPO_optimized[1,:], GPO_optimized[0,:], label='GPO')
+            plt.plot(REO_optimized[1, :], REO_optimized[0,:], label='REO')
+            plt.plot(global_state[i, 1, :], global_state[i, 0, :], label='init')
+            # plt.plot(truth_optimized[1,:], truth_optimized[0,:], label="truth")
+            plt.plot(truth.T[1, :], truth.T[0, :], label="truth")
+            plt.legend()
+            # plt.ion()
+            plt.show()
+            # plt.pause(0.001)
+            # plt.ioff()
+            if REO_error > 1:
+                debug = 1
 
     print "avg REO error:", sum(REO_error_list)/float(num_robots)
     print "avg GPO error:", sum(GPO_error_list) / float(num_robots)
@@ -310,15 +316,15 @@ if __name__ == '__main__':
 
     plt.figure(1)
     plt.clf()
-    plt.subplot(122)
-    plt.title("GPO - REO RMS error")
-    plt.hist(diff_error_list, 50, normed=1, facecolor="red", alpha=0.5)
-    plt.subplot(221)
+    # plt.subplot(122)
+    # plt.title("GPO - REO RMS error")
+    # plt.hist(diff_error_list, 50, normed=1, facecolor="red", alpha=0.5)
+    plt.subplot(211)
     plt.title("REO RMS error")
-    plt.hist(REO_error_list, 100, normed=1, facecolor="blue", alpha=0.5)
-    plt.subplot(223)
+    plt.hist(REO_error_list, 100, normed=1, facecolor="blue", alpha=0.5, range=[0, 0.001])
+    plt.subplot(212)
     plt.title("GPO RMS error")
-    plt.hist(GPO_error_list, 50, normed=1, facecolor="green", alpha=0.5)
+    plt.hist(GPO_error_list, 100, normed=1, facecolor="green", alpha=0.5, range=[0, 20])
 
     plt.show()
 
