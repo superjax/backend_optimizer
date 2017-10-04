@@ -184,10 +184,12 @@ With this approximation, Equation \ref{eqn:opt} simplifies to
   \label{eqn:3d_opt}
 \end{align}
 
+An intuitive way of thinking about the difference between edge and pose optimization is to consider a system of connected springs, pinned to a corkboard at the junctions between springs.  Global Pose optimization seeks to reduce the total energy in the system by moving the pins in the direction most likely to reduce tension.  Edge optimization, on the other hand, could be considered as a similarly connected spring system, gliding on ice.  Edge optimization encodes proper correlations between edges in a connected set, and edges not in a connected set are able to move independent of any other edge.
+
 \subsection{Relative Edge Optimization in $SE(2)$}
 \label{sec:relative_edge_optimization_in_se2}
 
-Take the example of a 3 DoF robot which follows the standard unicycle model, where edges are defined as $\e_i = \left[\begin{array}{ccc} f_i & r_i & \theta_i \end{array}\right]^\top$ where $f$ and $r$ represent forward and right motion and $\theta$ represents a change in bearing. In this case translational motion is coupled with heading. Let us first consider the simple case of a single loop closure after a string of edges, which could be described graphically as shown in~\ref{fig:pose_graph}.  In this case, the series of edges can be represented as a series of transformation matrices as follows:
+Consider the example of a 3 degree of freedom simplified robot which follows the standard unicycle model.  In this situation, odometry edges are defined as $\e_i = \left[\begin{array}{ccc} f_i & r_i & \theta_i \end{array}\right]^\top$ where $f$ and $r$ represent forward and right motion and $\theta$ represents a change in bearing. In this case translational motion is coupled with heading. Let us first consider the simple case of a single loop closure after a string of edges, which could be described graphically as shown in~\ref{fig:pose_graph}.  In this case, the series of edges can be represented as a series of transformation matrices as follows:
 
 \begin{align*}
 	h(\eest_{a-z},\Delta\e) =  \left[\begin{array}{c}
@@ -210,7 +212,7 @@ and compounds according to
   T_{az} &= T_{ab} T_{bc} T_{cd} ... T_{yz}.
 \end{align*}
 
-Note that bearing angle just sums between edge compounding through multiplication of the rotation part of the transform.
+Note that bearing angle actually sums between edge compounding through multiplication of the rotation part of the transform.
 
 \begin{figure}[H]
   \input{figures/multiple_lc_graph}
@@ -262,3 +264,6 @@ The Jacobian $\mathbf{H}_{az}$ can be calculated for an arbitrary set of edges f
     \EndFor
   \end{algorithmic}
 \end{algorithm}
+
+% talk about how to incorporate global measurements
+\subsection{Global Measurement integration}

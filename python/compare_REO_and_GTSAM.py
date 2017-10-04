@@ -173,6 +173,63 @@ def generate_data():
 
     pickle.dump(data, f)
 
+def combined_opt(edge_names, node_names, odom, loops, gst, Omegas):
+    # Single Iteration of REO
+    reo = REO()
+    dirs = np.ones(odom.shape[1])
+    lc_dirs = []
+    lcs = np.zeros((3, len(loops)))
+    lc_omegas = []
+    cycles = []
+    for i in range(len(loops)):
+        lc_dirs.append(1)
+        lc_omegas.append(scipy.linalg.inv(loops[i]['covariance']))
+        lcs[:, i] = np.array(loops[i]['transform'])
+        from_id = int(loops[i]['from_node_id'].split('_')[1])
+        to_id = int(loops[i]['to_node_id'].split('_')[1])
+        if to_id > from_id:
+            cycle = range(from_id, to_id)
+        else:
+            cycle = range(to_id, from_id)
+        cycles.append(cycle)
+    z_hat, diff, i = reo.optimize(odom, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, 10, 1e-8)
+    x_hat = get_global_pose(z_hat, np.array([0, 0, 0]))
+
+    edge_lists = list(edge_names)
+
+    # Optimize with Global Pose Optimization
+    GPO = backend_optimizer.Optimizer()
+    GPO.new_graph('0_000', 0)
+    edge_lists.extend(odom.tolist())
+    edge_lists.extend([[Omegas[j][0][0] for j in range(odom.shape[1])]])
+    edge_lists.extend([[Omegas[j][1][1] for j in range(odom.shape[1])]])
+    edge_lists.extend([[Omegas[j][2][2] for j in range(odom.shape[1])]])
+    for lc in loops:
+        edge_lists[0].append(lc['from_node_id'])
+        edge_lists[1].append(lc['to_node_id'])
+        edge_lists[2].append(lc['transform'][0])
+        edge_lists[3].append(lc['transform'][1])
+        edge_lists[4].append(lc['transform'][2])
+        edge_lists[5].append(lc['covariance'][0][0])
+        edge_lists[6].append(lc['covariance'][1][1])
+        edge_lists[7].append(lc['covariance'][2][2])
+
+    node_lists = [node_names[1:]]
+    node_lists.extend(x_hat[:, 1:].tolist())
+
+    nodes_transpose = [list(j) for j in zip(*node_lists)]
+    edges_transpose = [list(j) for j in zip(*edge_lists)]
+
+    GPO.add_edge_batch(nodes_transpose, edges_transpose)
+    for i in range(10):
+        GPO.optimize()
+    out_dict = GPO.get_optimized()
+    opt_pose = []
+    for node in out_dict['nodes']:
+        opt_pose.append(node[1:])
+    opt_pose = np.array(opt_pose)
+    return opt_pose.T.copy()
+
 def GPO_opt(edge_names, node_names, odom, lcs, gst, omegas):
     edge_lists = list(edge_names)
 
@@ -233,7 +290,6 @@ def REO_opt(edges, odom, loops, gst, Omegas):
     x_hat = get_global_pose(z_hat, np.array([0, 0, 0]))
     return x_hat, iter
 
-
 def run():
     # generate_data()
     # generate_house()
@@ -264,39 +320,63 @@ def run():
     REO_error_list = []
     GPO_error_list = []
     diff_error_list = []
+    comb_error_list = []
     REO_avg_iter_sum = 0.
     error_threshold = 15.
     REO_correct_count = 0
     GPO_correct_count = 0
+    comb_correct_count = 0
     for i in range(num_robots):
-        # truth_optimized = GPO_opt(edges, odometry[i, :, :], loop_closures, truth.T, Q)
-        GPO_optimized = GPO_opt(edges, node_names, odometry[i, :, :].copy(), loop_closures, global_state[i, :, :].copy(), Omegas)
-        REO_optimized, REO_iters = REO_opt(edges, odometry[i, :, :].copy(), loop_closures, global_state[i, :, :].copy(), Omegas)
 
-        # initial_error = scipy.linalg.norm(global_state - truth.T)
+        # truth_optimized = GPO_opt(edges, odometry[i, :, :], loop_closures, truth.T, Q)
+        comb_optimized = combined_opt(edges, node_names, odometry[i, :, :].copy(), loop_closures, global_state[i, :, :].copy(), Omegas)
+        GPO_optimized = GPO_opt(edges, node_names, odometry[i, :, :].copy(), loop_closures, global_state[i, :, :].copy(), Omegas)
+        # REO_optimized, REO_iters = REO_opt(edges, odometry[i, :, :].copy(), loop_closures, global_state[i, :, :].copy(), Omegas)
+        # GPO_optimized= global_state[i,:,:].copy()
+        REO_optimized = global_state[i,:,:].copy()
+        REO_iters = 7
+        initial_error = np.sum(scipy.linalg.norm(global_state[i, 0:2, :] - truth.T[0:2, :], axis=0))
         REO_error = np.sum(scipy.linalg.norm(REO_optimized[0:2, :] - truth.T[0:2, :], axis=0))
         diff_error = np.sum(scipy.linalg.norm(REO_optimized[0:2, :] - GPO_optimized[0:2, :], axis=0))
         GPO_error = np.sum(scipy.linalg.norm(GPO_optimized[0:2, :] - truth.T[0:2, :], axis=0))
+        comb_error = np.sum(scipy.linalg.norm(comb_optimized[0:2, :] - truth.T[0:2, :], axis=0))
 
         # print "REO:", REO_error, "GPO:", GPO_error
 
         REO_error_list.append(REO_error)
         GPO_error_list.append(GPO_error)
         diff_error_list.append(diff_error)
+        comb_error_list.append(comb_error)
         REO_avg_iter_sum += float(REO_iters)
 
         if REO_error < 0.001:
             REO_correct_count += 1
         if GPO_error < 0.001:
             GPO_correct_count += 1
+        if comb_error < 0.001:
+            comb_correct_count += 1
 
-        if REO_error > 1:# or GPO_error > 1:
+        if False:#REO_error > 1 or GPO_error > 1 or comb_error > 1:
             print "REO error = ", REO_error
             print "GPO_error = ", GPO_error
+            print "Comb_error = ", comb_error
+            print "REO_iters = ", REO_iters
+            print "initial_error = ", initial_error
             plt.figure(1)
             plt.clf()
+            lc_legend = False
+            for l in loop_closures:
+                if int(l['from_node_id'].split("_")[1]) == 0:
+                    start = truth[int(l['from_node_id'].split("_")[1]),:]
+                    end = truth[int(l['to_node_id'].split("_")[1]),:]
+                    if not lc_legend:
+                        plt.plot([start[1], end[1]], [start[0], end[0]], 'm-', linewidth=4, label="lc")
+                        lc_legend = True
+                    else:
+                        plt.plot([start[1], end[1]], [start[0], end[0]], 'm-', linewidth=4)
             plt.plot(GPO_optimized[1, :], GPO_optimized[0, :], label='GPO')
             plt.plot(REO_optimized[1, :], REO_optimized[0, :], label='REO')
+            plt.plot(comb_optimized[1,:], comb_optimized[0,:], label="REO+GPO")
             plt.plot(global_state[i, 1, :], global_state[i, 0, :], label='init')
             # plt.plot(truth_optimized[1,:], truth_optimized[0,:], label="truth")
             plt.plot(truth.T[1, :], truth.T[0, :], label="truth")
@@ -318,6 +398,10 @@ def run():
     results_dict['num_GPO_correct'] = GPO_correct_count
     results_dict['REO_errors'] = REO_error_list
     results_dict['GPO_errors'] = GPO_error_list
+    results_dict['comb_errors'] = comb_error_list
+    results_dict['avg_comb_error'] = sum(comb_error_list)/float(num_robots)
+    results_dict['max_comb_error'] = max(comb_error_list)
+    results_dict['num_comb_correct'] = comb_correct_count
 
     # for key, item in results_dict.iteritems():
         # print key, item
@@ -327,13 +411,17 @@ def run():
     # # plt.subplot(122)
     # # plt.title("GPO - REO RMS error")
     # # plt.hist(diff_error_list, 50, normed=1, facecolor="red", alpha=0.5)
-    # plt.subplot(211)
+    # plt.subplot(311)
     # plt.title("REO RMS error")
     # plt.hist(REO_error_list, 100, normed=1, facecolor="blue", alpha=0.5)
-    # plt.subplot(212)
+    # plt.subplot(312)
     # plt.title("GPO RMS error")
     # plt.hist(GPO_error_list, 100, normed=1, facecolor="green", alpha=0.5)
-    #
+    # plt.subplot(312)
+    # plt.title("REO+GPO RMS error")
+    # plt.hist(comb_error_list, 100, normed=1, facecolor="red", alpha=0.5)
+
+
     # plt.show()
 
     return results_dict
@@ -343,24 +431,30 @@ if __name__ == '__main__':
     REO_errors = []
     REO_iters = []
     GPO_errors = []
+    comb_errors = []
     for angle in tqdm(np.arange(0., 360., 0.5)):
+        # print angle
         generate_house(angle * np.pi/180., 10)
         results = run()
         REO_errors.append(results['REO_errors'])
         GPO_errors.append(results['GPO_errors'])
         REO_iters.append(results['avg_REO_iter'])
+        comb_errors.append(results['comb_errors'])
 
     REO_errors = np.array(REO_errors)
     GPO_errors = np.array(GPO_errors)
+    comb_errors = np.array(comb_errors)
 
     plt.figure(3)
     for i in range(GPO_errors.shape[1]):
         if i == 0:
             plt.plot(np.arange(0., 360., 0.5), GPO_errors[:,i], 'r.', label="GPO", alpha=0.5)
-            plt.plot(np.arange(0., 360., 0.5), REO_errors[:,i], 'b.', label="REO", alpha=0.5)
+            # plt.plot(np.arange(0., 360., 0.5), REO_errors[:,i], 'b.', label="REO", alpha=0.5)
+            plt.plot(np.arange(0., 360., 0.5), comb_errors[:, i], 'g.', label="REO/GPO", alpha=0.5)
         else:
             plt.plot(np.arange(0., 360., 0.5), GPO_errors[:,i], 'r.', alpha=0.5)
-            plt.plot(np.arange(0., 360., 0.5), REO_errors[:,i], 'b.', alpha=0.5)
+            # plt.plot(np.arange(0., 360., 0.5), REO_errors[:,i], 'b.', alpha=0.5)
+            plt.plot(np.arange(0., 360., 0.5), comb_errors[:, i], 'g.', alpha=0.5)
     plt.legend()
     plt.xlabel("angle offset (deg)")
     plt.show()
