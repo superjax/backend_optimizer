@@ -69,13 +69,13 @@ The optimization process then takes place according to the following pattern:
 	\item Apply the update to $\xhat$ and repeat steps (1)-(5) until $\Delta\x < \epsilon$.
  \end{enumerate}
 
-Global pose optimization solves the system by projecting onto the Cartesian coordinate frame with respect to a privileged coordinate frame. When only relative information is available, the initial global pose estimates can be arbitrarily far from their true position in this frame. The iterative nature of the Newton method works ideally when close to the solution, but can converge on a local minimum otherwise.  Figure~\ref{fig:g2o_divergence} illustrates results of global pose optimization on a hardware experiment with a multirotor with both relative odometry measurements and global GPS measurements which was initialized with a 180$^\circ$ initial heading error.  The large heading error induces extremely large linearization errors, which causes global pose optimization to struggle in finding the global optima.
+Global pose optimization solves the system by projecting onto the Cartesian coordinate frame with respect to a privileged coordinate frame. When only relative information is available, the initial global pose estimates can be arbitrarily far from their true position in this frame. The iterative nature of the Newton method works ideally when close to the solution, but can converge on a local minimum otherwise.  Figure~\ref{fig:g2o_baseball_divergence} illustrates results of global pose optimization on a hardware experiment with a multirotor with both relative odometry measurements and global GPS measurements which was initialized with a 180$^\circ$ initial heading error.  The large heading error induces extremely large linearization errors, which causes global pose optimization to struggle in finding the global optima.
 
-% \begin{figure}
-%   \includegraphics[width=0.3\textwidth]{figures/g2o_divergence.jpg}
-%   \caption{Divergent behavior observed in global pose optimization due to poor initialization}
-%   \label{fig:g2o_divergence}
-% \end{figure}
+\begin{figure}
+  \includegraphics[width=0.7\textwidth]{figures/house_g2o_diverged.jpg}
+  \caption{Divergent behavior observed in global pose optimization due to poor initialization}
+  \label{fig:g2o_baseball_divergence}
+\end{figure}
 
 
 % describe mathematically edge optimization

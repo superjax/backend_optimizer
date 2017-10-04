@@ -18,31 +18,57 @@ In the case of low heading error, every one of these optimizations produced virt
 \end{figure}
 
 \begin{figure}[H]
-  \includegraphics[width=\textwidth]{figures/REO_vs_GPO_good.png}
+  \includegraphics[width=0.7\textwidth]{figures/REO_vs_GPO_good.png}
   \caption{RMS error between optimized poses found by relative edge optimization (REO) and global pose optimization (GPO) for a simulation study of 10,000 house trajectories with small errors in both translation and heading.}
   \label{fig:convergence_house}
 \end{figure}
 
+\subsection{Large Heading Errors}
 % describe differences (pros/cons)
 % Talk about crazy heading error
-Differences between the performance of global pose graph and relative edge-based optimizations can be observed by stressing linearization errors in the various parameterizations.  As a first example, a random house trajectory was generated with perfect translation measurements, but heading errors sampled from $\mathcal{N}(0, 40^\circ)$. Five perfect randomly assigned loop closures were added to the trajectory and the trajectory was given to both GPO and REO.  This process was also repeated 10,000 times.  Figure~\ref{fig:GPO_heading_divergence} shows an example of one of these trajectories, and a histogram of the RMS error of the two approaches is shown in Figure~\ref{fig:GPO_bad_histogram}. REO was able to find the true solution to within 0.001m for 90\% of the trajectories, with a max error of 0.0100m and mean of 0.0004585m in an average of 7.546 iterations.  GPO converged to within 0.001m on only a single trajectory, had a max error of 9.825$\times 10 ^{39}m$ and a mean error of 9.856$\times 10 ^{35}$.
+Differences between the performance of global pose graph and relative edge-based optimizations can be observed by stressing linearization errors in the various parameterizations. As a first example, a random house trajectory was generated with perfect translation measurements, but heading errors sampled from $\mathcal{N}(0, 33^\circ)$. Five perfect randomly assigned loop closures were added to the trajectory and the trajectory was given to both GPO and REO.  This process was also repeated 10,000 times.  Figure~\ref{fig:GPO_heading_divergence} shows an example of one of these trajectories, and a histogram of the RMS error of the two approaches is shown in Figure~\ref{fig:GPO_bad_histogram}. REO was able to find the true solution to within 0.001m for 90\% of the trajectories, with a max error of 0.0100m and mean of 0.0004585m in an average of 7.546 iterations.  GPO converged to within 0.001m on only a single trajectory, had a max error of 9.825$\times 10 ^{39}m$ and a mean error of 9.856$\times 10 ^{35}$.
 
 \begin{figure}[H]
-  \includegraphics[width=0.7\textwidth]{figures/GPO_diverged.png}
+  \includegraphics[width=0.5\textwidth]{figures/GPO_diverged.png}
   \caption{One sample from simulation study with perfect translation measurements, five randomly assigned perfect loop closure constraints and significant heading error.  In this case, REO found the true solution while GPO diverged.}
   \label{fig:GPO_heading_divergence}
 \end{figure}
 
 \begin{figure}[H]
-  \includegraphics[width=0.7\textwidth]{figures/GPO_vs_REO_bad.png}
+  \includegraphics[width=0.5\textwidth]{figures/GPO_vs_REO_bad.png}
   \caption{histogram of RMS error calculated for the final global position of each node after each of 10,000 optimizations with significant heading error, but perfect translation measurements and five randomly assigned, perfect loop closure constraints. The maximum value of RMS error for REO in this study was 0.01004m and the maximum value of RMS error for GPO was 9.825$\times 10 ^{39}m$. Both histograms have been truncated to show details of the histogram at lower values of RMS error despite having quite long tails.}
   \label{fig:GPO_bad_histogram}.
 \end{figure}
 
+
+\subsection{Global Heading Misalignment}
+
 % Talk about bad initialization
-Another simulation study was performed in which the house trajectory was initialized with a 180$^\circ$ heading error, and provided global measurements via a virtual zero per the method described in~\cite{CITE}. the global pose optimization often struggles to find the global minimum.  A similar experiment with 10,000 house trajectories was performed, except with the addition of a global measurement located at the peak of the house.  In this study, the pose graph optimization failed to converge to the correct optimum (As shown in Figure~\ref{fig:GPO_heading_divergence}) $20\%$ of the time, came to the same result but took more iterations as relative edge optimization $50\%$ of the time, and performed equivalently (same number of iterations, same result) the remaining $30\%$ of the time.
+Another simulation study was performed in which the house trajectory was initialized different values of error in global orientation. Small amounts of translation noise ($\mathcal{N}(0, 0.1m)$) and heading noise ($\mathcal{N}(0, 1.8^\circ)$) were applied to each edge and three perfect global measurements were applied using a virtual zero node per the method described in~\cite{CITE}.  All samples used the same global measurements, but unique instantiations of additive noise. Figure~\ref{fig:global_heading_error_trajectory} illustrates a sample result from this study.
+
+\begin{figure}[H]
+  \includegraphics[width=0.5\textwidth]{figures/global_measurement_trajectory.png}
+  \caption{A sample trajectory where initial global alignment error was applied to a house trajectory.  Small amounts of translation and heading noise were applied to each edge (shown in the init trajectory), and three global measurements were applied (shown in bold yellow) via a virtual zero located at (0,0).  In this case, GPO failed to find the global minima, while REO converged in 2 iterations}
+  \label{fig:global_heading_error_trajectory}.
+\end{figure}
+
+\begin{figure}[H]
+  \includegraphics[width=0.5\textwidth]{figures/REO_vs_GPO_global_measurement.png}
+  \caption{Results of simulation study where the house trajectory was initialized with different global alignment errors.  Both REO and GPO were supplied with three global measurements, applied using a virtual zero.  As absolute heading alignment error exceeded 60$^\circ$, GPO struggled to find the global minimum.}
+  \label{fig:global_heading_error_results}.
+\end{figure}
+
+\subsection{Shortcomings of Edge Optimization}
 
 While relative edge optimization promises significant improvements in dealing with initialization errors when compared with global pose optimization, it is not as easily scaleable as global pose graph optimization.  In particular, the calculation of $\frac {\partial\Delta t_{a-z}}{\partial\Delta t_{ij}}$ causes significant correlations between edge estimates in a loop closure.  This ultimately leads to a loss of sparsity in the calculation of $\mathbf{H}_{az}^\top \Omega_{az} \mathbf{H}_{az}$ in Equation~\ref{eqn:3d_opt}.  The parameterization of global pose optimization however, does not run into this issue and can therefore exploit sparsity in solving for $\Delta \mathbf{x}$.  This becomes most important when considering a loop closure with a large number of edges where a dense matrix decomposition can be very costly. Secondly, in typical pose graph implementation, the number of edges can grow explosively if an agent repeatedly navigates the same area.  In this situation, the sum in the second term of the cost function in Equation~\ref{eqn:cost_function} can become extremely large and costly to calculate.
 
 % how to use them together
-To overcome these issue, we propose a two-fold solution.  To reduce the number of terms summed in the second term of Equation~\ref{eqn:cost_function}, we propose stochastically iterating over smaller loop closures in a well-connected pose graph and optimizing only a selection at a time.  To reduce the size of the optimization, we will exploit the relative nature of edge-based optimization to recursively break the full optimization into small, easy-to-manage problems.  This recursive process has the added benefit of producing completely parallelizeable independent computations which can be distributed to a GPU for fast evaluation.  While these solutions improve the scaleability of edge optimization, it still does not compete with the state-of-the-art global pose graph optimization libraries in terms of speed.  Due to the different parameterization, however, it can quickly bring a poorly initialized graph into a region where global pose graph optimization can quickly and reliably converge to a solution.  Therefore, we propose that edge optimization be performed for just a few iterations in situations where global pose graphs may struggle to find global minima to initialize the graph.  After much of the error has been removed by the more expensive, but less sensitive edge optimization, global pose graph optimization can very quickly find a global minima even in highly-connected and complicated graphs, where repeated edge optimization may become intractable.
+To overcome these issue, we propose a two-fold solution.  To reduce the number of terms summed in the second term of Equation~\ref{eqn:cost_function}, we propose stochastically iterating over smaller loop closures in a well-connected pose graph and optimizing only a selection at a time.  To reduce the size of the optimization, we will exploit the relative nature of edge-based optimization to recursively break the full optimization into small, easy-to-manage problems.  This recursive process has the added benefit of producing completely parallelizeable independent computations which can be distributed to a GPU for fast evaluation.
+
+\subsection{Complementary Nature of Edge and Pose Optimization}
+While these solutions improve the scaleability of edge optimization, it still does not compete with the state-of-the-art global pose graph optimization libraries in terms of speed.  Due to the different parameterization, however, it can quickly bring a poorly initialized graph into a region where global pose graph optimization can quickly and reliably converge to a solution.  Therefore, we propose that edge optimization be performed for just a few iterations in situations where global pose graphs may struggle to find global minima to initialize the graph.  After much of the error has been removed by the more expensive, but less sensitive edge optimization, global pose graph optimization can very quickly find a global minima even in highly-connected and complicated graphs, where repeated edge optimization may become intractable.
+
+% Demonstrate how awesome this is
+
+% Large heading errors with a single iteration of edge optimization
+% Global heading misalignment with a single iteration of edge optimization
