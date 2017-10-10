@@ -192,7 +192,7 @@ def combined_opt(edge_names, node_names, odom, loops, gst, Omegas):
         else:
             cycle = range(to_id, from_id)
         cycles.append(cycle)
-    z_hat, diff, i = reo.optimize(odom, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, 10, 1e-8)
+    z_hat, diff, i = reo.optimize(odom, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, 2    , 1e-8)
     x_hat = get_global_pose(z_hat, np.array([0, 0, 0]))
 
     edge_lists = list(edge_names)
@@ -448,13 +448,13 @@ if __name__ == '__main__':
     plt.figure(3)
     for i in range(GPO_errors.shape[1]):
         if i == 0:
-            plt.plot(np.arange(0., 360., 0.5), GPO_errors[:,i], 'r.', label="GPO", alpha=0.5)
+            plt.plot(np.arange(0., 360., 0.5), GPO_errors[:,i], 'c.', label="GPO", alpha=0.5)
             # plt.plot(np.arange(0., 360., 0.5), REO_errors[:,i], 'b.', label="REO", alpha=0.5)
-            plt.plot(np.arange(0., 360., 0.5), comb_errors[:, i], 'g.', label="REO/GPO", alpha=0.5)
+            plt.plot(np.arange(0., 360., 0.5), comb_errors[:, i], 'm.', label="REO/GPO", alpha=0.5)
         else:
-            plt.plot(np.arange(0., 360., 0.5), GPO_errors[:,i], 'r.', alpha=0.5)
+            plt.plot(np.arange(0., 360., 0.5), GPO_errors[:,i], 'c.', alpha=0.5)
             # plt.plot(np.arange(0., 360., 0.5), REO_errors[:,i], 'b.', alpha=0.5)
-            plt.plot(np.arange(0., 360., 0.5), comb_errors[:, i], 'g.', alpha=0.5)
+            plt.plot(np.arange(0., 360., 0.5), comb_errors[:, i], 'm.', alpha=0.5)
     plt.legend()
     plt.xlabel("angle offset (deg)")
     plt.show()
