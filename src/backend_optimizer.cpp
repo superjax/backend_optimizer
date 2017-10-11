@@ -212,6 +212,122 @@ py::dict BackendOptimizer::get_optimized()
   return out_dict;
 }
 
+py::dict BackendOptimizer::batch_optimize(pybind11::list nodes, pybind11::list edges, std::string fixed_node, int max_iterations, double epsilon)
+{
+  //  std::cout << "adding ";
+  NonlinearFactorGraph new_graph;
+  Values new_initial_estimates;
+
+  // convert the nodes
+  //  std::cout << "adding nodes \n";
+  std::vector<py::list> stl_nodes = nodes.cast<std::vector<py::list>>();
+  std::map<std::string, uint64_t> node_name_to_id_map;
+  std::map<uint64_t, std::string> node_id_to_name_map;
+  //  std::cout << stl_nodes.size() << " odometry edges ";
+  for (int i = 0; i < stl_nodes.size(); i++)
+  {
+    std::string id = stl_nodes[i][0].cast<std::string>();
+    double x = stl_nodes[i][1].cast<double>();
+    double y = stl_nodes[i][2].cast<double>();
+    double z = stl_nodes[i][3].cast<double>();
+    //    std::cout << x << ", " << y << ", " << z << "\n";
+
+    // connect the name of this node to an integer index
+    node_name_to_id_map[id] = i;
+    node_id_to_name_map[i] = id;
+
+    new_initial_estimates.insert(i, Pose2(x, y,  z));
+  }
+
+  // extract edges
+  std::vector<std::vector<double>> edge_constraints;
+  std::vector<py::list> stl_edges = edges.cast<std::vector<py::list>>();
+  std::vector<std::vector<std::string>> edge_list;
+  for (int i = 0; i < stl_edges.size(); i++)
+  {
+    std::string from = stl_edges[i][0].cast<std::string>();
+    std::string to = stl_edges[i][1].cast<std::string>();
+    double x = stl_edges[i][2].cast<double>();
+    double y = stl_edges[i][3].cast<double>();
+    double z = stl_edges[i][4].cast<double>();
+    double P11 = stl_edges[i][5].cast<double>();
+    double P22 = stl_edges[i][6].cast<double>();
+    double P33 = stl_edges[i][7].cast<double>();
+
+    // save off edge constraints so we can quickly load it if we want to add edges later
+    std::vector<std::string> edge_vec = {from, to};
+    edge_list.push_back(edge_vec);
+    std::vector<double> edge_constraint = {x, y, z, P11, P22, P33};
+    edge_constraints.push_back(edge_constraint);
+
+    // put this edge in the graph
+    noiseModel::Diagonal::shared_ptr model = noiseModel::Diagonal::Sigmas(Vector3(P11, P22, P33));
+    new_graph.emplace_shared<BetweenFactor<Pose2> >(node_name_to_id_map[from], node_name_to_id_map[to], Pose2(x, y, z), model);
+  }
+
+  // fix the fixed node
+  int fixed_node_index = node_name_to_id_map[fixed_node];
+  noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Sigmas(Vector3(0.001, 0.001, 0.001));
+  new_graph.emplace_shared<PriorFactor<Pose2> >(fixed_node_index, Pose2(0, 0, 0), priorNoise);
+  new_initial_estimates.insert(fixed_node_index, Pose2(0, 0, 0));
+
+  // Optimize the Graph
+  LevenbergMarquardtOptimizer optimizer(new_graph, new_initial_estimates);
+  int iter = 0;
+  double error = 1e25;
+  while (iter < max_iterations && error < epsilon)
+  {
+    optimizer.iterate();
+    iter++;
+    error = optimizer.error();
+  }
+
+  Values optimized_values = optimizer.values();
+
+  py::dict out_dict;
+  py::list node_list;
+  for (int i = 0; i < stl_nodes.size(); i++)
+  {
+    // Get the optimized pose out of the graph
+    Pose2 output = optimized_values.at<Pose2>(i);
+
+    // pack up into a python list
+    std::string node_name = node_id_to_name_map[i];
+    py::list node;
+    node.append(node_name);
+    node.append(output.x());
+    node.append(output.y());
+    node.append(output.theta());
+    node_list.append(node);
+  }
+  out_dict["nodes"] = node_list;
+
+  py::list out_edge_list;
+  for (int i = 0; i < edge_constraints.size(); i++)
+  {
+    py::list edge;
+    std::string from = edge_list[i][0];
+    std::string to = edge_list[i][1];
+
+    edge.append(from);
+    edge.append(to);
+    edge.append(edge_constraints[i][0]);
+    edge.append(edge_constraints[i][1]);
+    edge.append(edge_constraints[i][2]);
+    edge.append(edge_constraints[i][3]);
+    edge.append(edge_constraints[i][4]);
+    edge.append(edge_constraints[i][5]);
+    out_edge_list.append(edge);
+  }
+  out_dict["edges"] = out_edge_list;
+
+  out_dict["fixed_node"] = fixed_node;
+  out_dict["iter"] = iter;
+  out_dict["error"] = error;
+  return out_dict;
+
+}
+
 
 PYBIND11_PLUGIN(backend_optimizer) {
   py::module m("backend_optimizer", "pybind11 backend_optimizer plugin");
@@ -224,7 +340,8 @@ PYBIND11_PLUGIN(backend_optimizer) {
       .def("add_edge_batch", &BackendOptimizer::add_edge_batch)
       .def("add_lc_batch", &BackendOptimizer::add_lc_batch)
       .def("optimize", &BackendOptimizer::optimize)
-      .def("get_optimized", &BackendOptimizer::get_optimized);
+      .def("get_optimized", &BackendOptimizer::get_optimized)
+      .def("batch_optimize", &BackendOptimizer::batch_optimize);
 
   return m.ptr();
 }

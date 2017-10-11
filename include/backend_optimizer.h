@@ -11,6 +11,7 @@
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/ISAM2.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/Values.h>
 
@@ -29,7 +30,6 @@ class BackendOptimizer
 {
 
 public:
-
     BackendOptimizer();
     py::list cumsum(py::list list_to_sum);
     int new_graph(std::string fixed_node, int id);
@@ -38,6 +38,7 @@ public:
     void add_edge(py::list node, py::list edge);
     void add_loop_closure(py::list edge);
     double  optimize();
+    py::dict batch_optimize(pybind11::list nodes, pybind11::list edges, std::string fixed_node, int max_iterations, double epsilon);
     py::dict get_optimized();
     py::dict get_global_pose_and_covariance(std::string node);
 
