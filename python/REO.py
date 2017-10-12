@@ -162,7 +162,7 @@ class REO():
             iter += 1
 
         # Update estimate
-        return z_hat, diff, iter
+        return z_hat.copy(), diff, iter
 
     def compound_edges(self, z, dirs):
         p = np.zeros(3)

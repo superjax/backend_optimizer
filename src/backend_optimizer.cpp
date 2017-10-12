@@ -269,13 +269,12 @@ py::dict BackendOptimizer::batch_optimize(pybind11::list nodes, pybind11::list e
   int fixed_node_index = node_name_to_id_map[fixed_node];
   noiseModel::Diagonal::shared_ptr priorNoise = noiseModel::Diagonal::Sigmas(Vector3(0.001, 0.001, 0.001));
   new_graph.emplace_shared<PriorFactor<Pose2> >(fixed_node_index, Pose2(0, 0, 0), priorNoise);
-  new_initial_estimates.insert(fixed_node_index, Pose2(0, 0, 0));
 
   // Optimize the Graph
   LevenbergMarquardtOptimizer optimizer(new_graph, new_initial_estimates);
   int iter = 0;
   double error = 1e25;
-  while (iter < max_iterations && error < epsilon)
+  while (iter < max_iterations && error > epsilon)
   {
     optimizer.iterate();
     iter++;
