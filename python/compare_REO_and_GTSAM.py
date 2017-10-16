@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import scipy.linalg
 from REO import invert_transform, concatenate_transform, invert_edges
-import multiprocessing
 
 def get_global_pose(edges, x0):
     x = np.zeros((edges.shape[0], edges.shape[1] + 1))
@@ -28,7 +27,7 @@ def generate_house(angle_offset = 0, num_robots = 1000):
 
     dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    Omegas = [np.diag([1e3, 1e3, 4]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([1e3, 1e3, 5]) for i in range(perfect_edges.shape[1])]
 
     odometry = np.zeros((num_robots, 3, perfect_edges.shape[1]))
     global_estimate = np.zeros((num_robots, 3, perfect_edges.shape[1]+1))
@@ -52,7 +51,7 @@ def generate_house(angle_offset = 0, num_robots = 1000):
               [1, 7]]
 
     # Turn off some loop closures
-    active_lc = [1, 2, 4, 5, 7, 8]
+    active_lc = [0, 1, 2, 4, 7, 8]
     lc = lc[:, active_lc]
     lc_omega = [lc_omega[i] for i in active_lc]
     lc_dir = lc_dir[active_lc, None]
@@ -80,9 +79,10 @@ def generate_house(angle_offset = 0, num_robots = 1000):
                               odometry[robot,0,i], odometry[robot,1,i], odometry[robot,2,i],
                               Omegas[i][0, 0], Omegas[i][1, 1], Omegas[i][2, 2]])
             else:
-                edges.append(['0_' + str(zi+1).zfill(3), '0_' + str(i).zfill(3),
+                edges.append(['0_' + str(i+1).zfill(3), '0_' + str(i).zfill(3),
                               odometry[robot, 0, i], odometry[robot, 1, i], odometry[robot, 2, i],
                               Omegas[i][0, 0], Omegas[i][1, 1], Omegas[i][2, 2]])
+
         for i, L in enumerate(lc.T):
                 from_num = cycles[i][0]
                 to_num = cycles[i][1]
@@ -262,7 +262,7 @@ def REO_opt(edges, nodes, origin_node, num_iters, tol):
                 cycles.append([i + to_id for i in range(from_id - to_id)])
                 lc_dirs.append(-1)
 
-    z_hat, diff, iters = reo.optimize(np.array(odom).T, np.array(dirs), Omegas, np.array(lc).squeeze().T, lc_omegas,
+    z_hat, diff, iters = reo.optimize(np.array(odom).T, np.array(dirs), Omegas, np.atleast_2d(np.array(lc).squeeze()).T, lc_omegas,
                                       np.array(lc_dirs), np.array(cycles), num_iters, tol)
     x_hat = get_global_pose(z_hat, np.array([0, 0, 0]))
     return x_hat, iters
@@ -282,12 +282,13 @@ def run():
     GPO_error_list = []
     diff_error_list = []
     REO_avg_iter_sum = 0.
+    GPO_avg_iter_sum = 0.
     REO_correct_count = 0
     GPO_correct_count = 0
     for i in tqdm(range(num_robots)):
         # Optimize with both optimizers
-        GPO_optimized, GPO_iters = GPO_opt(edges[i], nodes[i], '0_000', 100, 1e-8)
-        REO_optimized, REO_iters = REO_opt(edges[i], nodes[i], '0_000', 100, 1e-8)
+        GPO_optimized, GPO_iters = GPO_opt(edges[i], nodes[i], '0_000', 100, 1e-12)
+        REO_optimized, REO_iters = REO_opt(edges[i], nodes[i], '0_000', 100, 1e-12)
 
         # Calculate Error
         initial_error = np.sum(scipy.linalg.norm(global_state[i, 0:2, :] - truth[0:2, :], axis=0))
@@ -301,16 +302,19 @@ def run():
         GPO_error_list.append(GPO_error)
         diff_error_list.append(diff_error)
         REO_avg_iter_sum  += float(REO_iters)
+        GPO_avg_iter_sum += float(GPO_iters)
+
 
         if REO_error < 0.01:
             REO_correct_count += 1
         if GPO_error < 0.01:
             GPO_correct_count += 1
 
-        if False:  # GPO_error > 1 or REO_error > 1:
+        if False: #REO_error > 1:
             print "REO error = ", REO_error
             print "GPO_error = ", GPO_error
             print "REO_iters = ", REO_iters
+            print "GPO_iters = ", GPO_iters
             print "initial_error = ", initial_error
 
             plt.figure(1)
@@ -327,12 +331,14 @@ def run():
     results_dict['avg_REO_error'] = sum(REO_error_list) / float(num_robots)
     results_dict['avg_GPO_error'] = sum(GPO_error_list) / float(num_robots)
     results_dict['avg_REO_iter'] = REO_avg_iter_sum / float(num_robots)
+    results_dict['avg_GPO_iter'] = GPO_avg_iter_sum / float(num_robots)
     results_dict['max_REO_error'] = max(REO_error_list)
     results_dict['max_GPO_error'] = max(GPO_error_list)
     results_dict['num_REO_correct'] = REO_correct_count
     results_dict['num_GPO_correct'] = GPO_correct_count
     results_dict['REO_errors'] = REO_error_list
     results_dict['GPO_errors'] = GPO_error_list
+
 
     for key, item in results_dict.iteritems():
         print key, item
@@ -341,7 +347,7 @@ def run():
     plt.clf()
     plt.subplot(211)
     plt.title("GPO RMS error")
-    plt.hist(GPO_error_list, 100, normed=1, facecolor="blue", alpha=0.5, range=[0, 15.0])
+    plt.hist(GPO_error_list, 100, normed=1, facecolor="blue", alpha=0.5, range=[0, 12])
     plt.subplot(212)
     plt.title("REO RMS error")
     plt.hist(REO_error_list, 100, normed=1, facecolor="green", alpha=0.5, range=[0, 0.015])
@@ -353,7 +359,7 @@ def run():
 
 if __name__ == '__main__':
 
-    generate_house(0, 1000)
+    generate_house(0, 10000)
     print "running optimization"
     results = run()
 
