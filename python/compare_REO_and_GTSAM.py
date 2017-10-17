@@ -27,18 +27,12 @@ def generate_house(angle_offset = 0, num_robots = 1000):
 
     dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    Omegas = [np.diag([1e3, 1e3, 5]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([1e5, 1e5, 50]) for i in range(perfect_edges.shape[1])]
 
     odometry = np.zeros((num_robots, 3, perfect_edges.shape[1]))
     global_estimate = np.zeros((num_robots, 3, perfect_edges.shape[1]+1))
     truth = get_global_pose(perfect_edges, x0.copy())
     # invert_edges(perfect_edges, dirs, [5, 7, 2])
-
-    lc = np.array([[1.0, 1.0, 0.5, 0.0, 0.0,      0., 0.5, 2.**0.5/2., 1.0],
-                   [0.0, 1.0, 1.5, 1.0, 1.0,      1., -0.5, -2.**0.5/2., 1.0],
-                   [-np.pi / 4.0, 3.*np.pi / 4.0, -3.*np.pi / 4.0, -np.pi/2.0, -np.pi / 4.0,       -3.*np.pi/4., np.pi/4., -np.pi/2., -3.*np.pi/4.]])
-    lc_omega = [np.diag([1e10, 1e10, 1e10]) for i in range(lc.shape[1])]
-    lc_dir = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1])
 
     cycles = [[0, 8],
               [0, 5],
@@ -50,20 +44,26 @@ def generate_house(angle_offset = 0, num_robots = 1000):
               [4, 8],
               [1, 7]]
 
+    lc = np.zeros([3, len(cycles)])
+    for i, cycle in enumerate(cycles):
+        for j in range(cycle[0], cycle[1]):
+            lc[:,i] = concatenate_transform(lc[:,i], perfect_edges[:,j])
+
+    lc_omega = [np.diag([1e10, 1e10, 1e10]) for i in range(lc.shape[1])]
+
     # Turn off some loop closures
-    active_lc = [0, 1, 2, 4, 7, 8]
+    active_lc = [0, 1, 2, 4, 5, 7, 8]
     lc = lc[:, active_lc]
     lc_omega = [lc_omega[i] for i in active_lc]
-    lc_dir = lc_dir[active_lc, None]
     cycles = [cycles[i] for i in active_lc]
 
     edge_g2o_lists = []
     nodes_g2o_lists = []
 
     for robot in tqdm(range(num_robots)):
-        edge_noise = np.array([[0.*np.random.normal(0, 1. / Omegas[i][0][0]) for i in range(perfect_edges.shape[1])],
-                               [0.*np.random.normal(0, 1. / Omegas[i][1][1]) for i in range(perfect_edges.shape[1])],
-                               [np.random.normal(0, 1. / Omegas[i][2][2]) for i in range(perfect_edges.shape[1])]])
+        edge_noise = np.array([[0.*np.random.normal(0, (1. / Omegas[i][0][0])**0.5) for i in range(perfect_edges.shape[1])],
+                               [0.*np.random.normal(0, (1. / Omegas[i][1][1])**0.5) for i in range(perfect_edges.shape[1])],
+                               [np.random.normal(0, (1. / Omegas[i][2][2])**0.5) for i in range(perfect_edges.shape[1])]])
         edge_noise[:,0] = np.zeros(3)
 
         noisy_edges = perfect_edges + edge_noise
@@ -176,46 +176,18 @@ def generate_data():
 
     pickle.dump(data, f)
 
-def combined_opt(edge_names, node_names, odom, loops, gst, Omegas):
+def combined_opt(edges, nodes, origin_node, num_iters, tol):
     # Single Iteration of REO
-    x_hat, iter = REO_opt(edge_names, odom, loops, gst, Omegas, max_iterations=10, epsilon=0.5)
-    # return x_hat, iter
-    #
-    edge_lists = list(edge_names)
+    x_hat_REO, iter_REO = REO_opt(edges, nodes, origin_node, num_iters, tol)
 
-    # Optimize with Global Pose Optimization
-    GPO = backend_optimizer.Optimizer()
-    GPO.new_graph('0_000', 0)
-    edge_lists.extend(odom.tolist())
-    edge_lists.extend([[Omegas[j][0][0] for j in range(odom.shape[1])]])
-    edge_lists.extend([[Omegas[j][1][1] for j in range(odom.shape[1])]])
-    edge_lists.extend([[Omegas[j][2][2] for j in range(odom.shape[1])]])
-    for lc in loops:
-        edge_lists[0].append(lc['from_node_id'])
-        edge_lists[1].append(lc['to_node_id'])
-        edge_lists[2].append(lc['transform'][0])
-        edge_lists[3].append(lc['transform'][1])
-        edge_lists[4].append(lc['transform'][2])
-        edge_lists[5].append(lc['covariance'][0][0])
-        edge_lists[6].append(lc['covariance'][1][1])
-        edge_lists[7].append(lc['covariance'][2][2])
+    # repackage nodes
+    nodes_new = [ [nodes[i][0], x_hat_REO[0, i], x_hat_REO[1, i], x_hat_REO[2, i]] for i in xrange(len(nodes)) ]
 
-    node_lists = [node_names[1:]]
-    node_lists.extend(x_hat[:, 1:].tolist())
-
-    nodes_transpose = [list(j) for j in zip(*node_lists)]
-    edges_transpose = [list(j) for j in zip(*edge_lists)]
-
-    GPO.add_edge_batch(nodes_transpose, edges_transpose)
-    for i in range(10):
-        GPO.optimize()
-    out_dict = GPO.get_optimized()
-    opt_pose = []
-    for node in out_dict['nodes']:
-        opt_pose.append(node[1:])
-    opt_pose = np.array(opt_pose)
-    return opt_pose.T.copy(), iter
-    # return x_hat.copy()
+    # Converge with GPO
+    x_hat, iters = GPO_opt(edges, nodes_new, origin_node, num_iters, tol)
+    # x_hat = x_hat_REO
+    # iters = iter_REO
+    return x_hat, iters
 
 def GPO_opt(edges, nodes, origin_node, num_iters, tol):
     GPO = backend_optimizer.Optimizer()
@@ -281,12 +253,16 @@ def run():
     REO_error_list = []
     GPO_error_list = []
     diff_error_list = []
+    comb_error_list = []
     REO_avg_iter_sum = 0.
     GPO_avg_iter_sum = 0.
+    comb_avg_iter_sum = 0.
     REO_correct_count = 0
     GPO_correct_count = 0
+    comb_correct_count = 0
     for i in tqdm(range(num_robots)):
         # Optimize with both optimizers
+        comb_optimized, comb_iters = combined_opt(edges[i], nodes[i], '0_000', 100, 1e-12)
         GPO_optimized, GPO_iters = GPO_opt(edges[i], nodes[i], '0_000', 100, 1e-12)
         REO_optimized, REO_iters = REO_opt(edges[i], nodes[i], '0_000', 100, 1e-12)
 
@@ -295,32 +271,40 @@ def run():
         REO_error = np.sum(scipy.linalg.norm(REO_optimized[0:2, :] - truth[0:2, :], axis=0))
         diff_error = np.sum(scipy.linalg.norm(REO_optimized[0:2, :] - GPO_optimized[0:2, :], axis=0))
         GPO_error = np.sum(scipy.linalg.norm(GPO_optimized[0:2, :] - truth[0:2, :], axis=0))
+        comb_error = np.sum(scipy.linalg.norm(comb_optimized[0:2, :] - truth[0:2, :], axis=0))
 
         # print "REO:", REO_error, "GPO:", GPO_error
 
         REO_error_list.append(REO_error)
         GPO_error_list.append(GPO_error)
         diff_error_list.append(diff_error)
+        comb_error_list.append(comb_error)
         REO_avg_iter_sum  += float(REO_iters)
         GPO_avg_iter_sum += float(GPO_iters)
+        comb_avg_iter_sum += float(comb_iters)
 
 
         if REO_error < 0.01:
             REO_correct_count += 1
         if GPO_error < 0.01:
             GPO_correct_count += 1
+        if comb_error < 0.01:
+            comb_correct_count += 1
 
-        if False: #REO_error > 1:
+        if comb_error > 1:
             print "REO error = ", REO_error
             print "GPO_error = ", GPO_error
+            print "comb_error = ", comb_error
             print "REO_iters = ", REO_iters
             print "GPO_iters = ", GPO_iters
+            print "comb_iters = ", comb_iters
             print "initial_error = ", initial_error
 
             plt.figure(1)
             plt.clf()
             plt.plot(GPO_optimized[1, :], GPO_optimized[0, :], label='GPO')
             plt.plot(REO_optimized[1, :], REO_optimized[0, :], label='REO')
+            plt.plot(comb_optimized[1, :], comb_optimized[0, :], label='comb')
             plt.plot(global_state[i, 1, :], global_state[i, 0, :], label='init')
             plt.plot(truth[1, :], truth[0, :], label="truth")
             plt.legend()
@@ -338,6 +322,11 @@ def run():
     results_dict['num_GPO_correct'] = GPO_correct_count
     results_dict['REO_errors'] = REO_error_list
     results_dict['GPO_errors'] = GPO_error_list
+    results_dict['GPO_errors'] = GPO_error_list
+    results_dict['num_comb_correct'] = comb_correct_count
+    results_dict['max_comb_error'] = max(comb_error_list)
+    results_dict['avg_comb_iter'] = comb_avg_iter_sum / float(num_robots)
+    results_dict['avg_comb_error'] = sum(comb_error_list) / float(num_robots)
 
 
     for key, item in results_dict.iteritems():
@@ -349,8 +338,8 @@ def run():
     plt.title("GPO RMS error")
     plt.hist(GPO_error_list, 100, normed=1, facecolor="blue", alpha=0.5, range=[0, 12])
     plt.subplot(212)
-    plt.title("REO RMS error")
-    plt.hist(REO_error_list, 100, normed=1, facecolor="green", alpha=0.5, range=[0, 0.015])
+    plt.title("combined RMS error")
+    plt.hist(comb_error_list, 100, normed=1, facecolor="green", alpha=0.5, range=[0, 0.015])
 
 
     plt.show()
@@ -359,7 +348,7 @@ def run():
 
 if __name__ == '__main__':
 
-    generate_house(0, 10000)
+    generate_house(0, 100)
     print "running optimization"
     results = run()
 

@@ -69,18 +69,12 @@ While relative edge optimization promises significant improvements in dealing wi
 
 With these shortcomings in mind, we propose that edge optimization be performed for just a few iterations in situations where global pose graphs may struggle to find global minima to initialize the graph.  After a great deal of error has been removed by the more expensive, but more robust edge optimization, global pose graph optimization can very quickly find a global minima even in highly-connected and complicated graphs, where repeated edge optimization may become intractable.
 
-To demonstrate the effectiveness of this strategy, we repeated the three simulation studies with a single iteration of REO to initialize the graph, which was passed to GPO for refining.  In all three situations, the combination of both REO and GPO resulted in strong robustness to initialization errors and resulted in 100\% convergence.
+To demonstrate the effectiveness of this strategy, we repeated the global heading error simulation study with a single iteration of REO to initialize the graph, the result of which was then passed to GPO for refining.  In all three situations, the combination of both REO and GPO resulted in strong robustness to initialization errors and resulted in 100\% convergence.
 
 \begin{figure}[H]
   \includegraphics[width=0.5\textwidth]{figures/combined_global_heading_results.png}
   \caption{Results of a second simulation study with varying angles of initial heading error.  In this case, the addition of a single iteration of REO prior to using GPO resulted in perfect convergence, despite large initial heading error.}
   \label{fig:combined_global_heading_results}
-\end{figure}
-
-\begin{figure}[H]
-  \includegraphics{figures/combined_heading_errors_results.png}
-  \caption{Results of a second simulation study with large amounts of heading error applied to edges.  Adding a single iteration of REO prior to using GPO resulted in perfect convergence of all trajectories.}
-  \label{fig:heading_error_results}
 \end{figure}
 
 
