@@ -37,7 +37,7 @@ e & \text{: Number of odometry edges } \\
 
 
 % describe mathematically pose optimization
-Pose graph optimization typically formulated as a least-squares optimization problem.  This formulation can be derived using a classical least-squares optimization approach~\cite{Kummerle2011} or from a Bayesian perspective in a factor graph~\cite{Kaess2008}.  If noise about graph edges is assumed to be gaussian, both derivations ultimately lead to the following expression for the global cost function of the optimization:
+Pose graph optimization is typically formulated as a least-squares optimization problem.  This formulation can be derived using a classical least-squares optimization approach~\cite{Kummerle2011} or from a Bayesian perspective in a factor graph~\cite{Kaess2008}.  If noise about graph edges is assumed to be gaussian, both derivations ultimately lead to the following expression for the global cost function of the optimization:
 
 \begin{align}
   F(\eest,\emeas) = \sum_{\{i,j\} \in \mathcal{O}} \overbrace{(\eest_{ij}-\emeas_{ij})^\top\Omega_{ij}(\eest_{ij}-\emeas_{ij})}^\text{Odometry error penalty} + \sum_{\{a,z\} \in \mathcal{L}} \overbrace{ (\eest_{a-z}-\emeas_{az})^\top \Omega_{az} (\eest_{a-z}-\emeas_{az}) }^\text{Loop error penalty}

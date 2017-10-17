@@ -27,7 +27,7 @@ def generate_house(angle_offset = 0, num_robots = 1000):
 
     dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    Omegas = [np.diag([1e5, 1e5, 50]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([1e5, 1e5, 1e4]) for i in range(perfect_edges.shape[1])]
 
     odometry = np.zeros((num_robots, 3, perfect_edges.shape[1]))
     global_estimate = np.zeros((num_robots, 3, perfect_edges.shape[1]+1))
@@ -198,7 +198,7 @@ def GPO_opt(edges, nodes, origin_node, num_iters, tol):
     opt_pose = np.array(opt_pose)
     return opt_pose.T.copy(), out_dict['iter']
 
-def REO_opt(edges, nodes, origin_node, num_iters, tol):
+def REO_opt(edges, nodes, origin_node, num_iters, tol, SGD=False, SGD_rate = 0):
 
     reo = REO()
 
@@ -235,7 +235,7 @@ def REO_opt(edges, nodes, origin_node, num_iters, tol):
                 lc_dirs.append(-1)
 
     z_hat, diff, iters = reo.optimize(np.array(odom).T, np.array(dirs), Omegas, np.atleast_2d(np.array(lc).squeeze()).T, lc_omegas,
-                                      np.array(lc_dirs), np.array(cycles), num_iters, tol)
+                                      np.array(lc_dirs), np.array(cycles), num_iters, tol, SGD=SGD, SGD_rate = 0)
     x_hat = get_global_pose(z_hat, np.array([0, 0, 0]))
     return x_hat, iters
 
@@ -260,73 +260,83 @@ def run():
     REO_correct_count = 0
     GPO_correct_count = 0
     comb_correct_count = 0
+    REO_SGD_error_lists = dict()
+    REO_SGD_iters = dict()
+    for i in xrange(6):
+        REO_SGD_error_lists[i] = []
+        REO_SGD_iters[i] = []
+
     for i in tqdm(range(num_robots)):
         # Optimize with both optimizers
-        comb_optimized, comb_iters = combined_opt(edges[i], nodes[i], '0_000', 100, 1e-12)
-        GPO_optimized, GPO_iters = GPO_opt(edges[i], nodes[i], '0_000', 100, 1e-12)
-        REO_optimized, REO_iters = REO_opt(edges[i], nodes[i], '0_000', 100, 1e-12)
+        # comb_optimized, comb_iters = combined_opt(edges[i], nodes[i], '0_000', 100, 1e-12)
+        # GPO_optimized, GPO_iters = GPO_opt(edges[i], nodes[i], '0_000', 100, 1e-12)
+        # REO_optimized, REO_iters = REO_opt(edges[i], nodes[i], '0_000', 100, 1e-12)
+        for i in xrange(6):
+            SGD_optimized, SGD_iters = REO_opt(edges[i], nodes[i], '0_000', 100, 1e-12, SGD=True, SGD_rate=i/100.)
+            REO_SGD_error_lists[i].append(np.sum(scipy.linalg.norm(SGD_optimized[0:2, :] - truth[0:2, :], axis=0)))
+            REO_SGD_iters[i].append(SGD_iters)
 
         # Calculate Error
-        initial_error = np.sum(scipy.linalg.norm(global_state[i, 0:2, :] - truth[0:2, :], axis=0))
-        REO_error = np.sum(scipy.linalg.norm(REO_optimized[0:2, :] - truth[0:2, :], axis=0))
-        diff_error = np.sum(scipy.linalg.norm(REO_optimized[0:2, :] - GPO_optimized[0:2, :], axis=0))
-        GPO_error = np.sum(scipy.linalg.norm(GPO_optimized[0:2, :] - truth[0:2, :], axis=0))
-        comb_error = np.sum(scipy.linalg.norm(comb_optimized[0:2, :] - truth[0:2, :], axis=0))
+        # initial_error = np.sum(scipy.linalg.norm(global_state[i, 0:2, :] - truth[0:2, :], axis=0))
+        # REO_error = np.sum(scipy.linalg.norm(REO_optimized[0:2, :] - truth[0:2, :], axis=0))
+        # diff_error = np.sum(scipy.linalg.norm(REO_optimized[0:2, :] - GPO_optimized[0:2, :], axis=0))
+        # GPO_error = np.sum(scipy.linalg.norm(GPO_optimized[0:2, :] - truth[0:2, :], axis=0))
+        # comb_error = np.sum(scipy.linalg.norm(comb_optimized[0:2, :] - truth[0:2, :], axis=0))
 
         # print "REO:", REO_error, "GPO:", GPO_error
 
-        REO_error_list.append(REO_error)
-        GPO_error_list.append(GPO_error)
-        diff_error_list.append(diff_error)
-        comb_error_list.append(comb_error)
-        REO_avg_iter_sum  += float(REO_iters)
-        GPO_avg_iter_sum += float(GPO_iters)
-        comb_avg_iter_sum += float(comb_iters)
+        # REO_error_list.append(REO_error)
+        # GPO_error_list.append(GPO_error)
+        # diff_error_list.append(diff_error)
+        # comb_error_list.append(comb_error)
+        # REO_avg_iter_sum  += float(REO_iters)
+        # GPO_avg_iter_sum += float(GPO_iters)
+        # comb_avg_iter_sum += float(comb_iters)
 
 
-        if REO_error < 0.01:
-            REO_correct_count += 1
-        if GPO_error < 0.01:
-            GPO_correct_count += 1
-        if comb_error < 0.01:
-            comb_correct_count += 1
+        # if REO_error < 0.01:
+        #     REO_correct_count += 1
+        # if GPO_error < 0.01:
+        #     GPO_correct_count += 1
+        # if comb_error < 0.01:
+        #     comb_correct_count += 1
 
-        if comb_error > 1:
+        if False: #comb_error > 1:
             print "REO error = ", REO_error
             print "GPO_error = ", GPO_error
-            print "comb_error = ", comb_error
+            # print "comb_error = ", comb_error
             print "REO_iters = ", REO_iters
             print "GPO_iters = ", GPO_iters
-            print "comb_iters = ", comb_iters
+            # print "comb_iters = ", comb_iters
             print "initial_error = ", initial_error
 
             plt.figure(1)
             plt.clf()
             plt.plot(GPO_optimized[1, :], GPO_optimized[0, :], label='GPO')
             plt.plot(REO_optimized[1, :], REO_optimized[0, :], label='REO')
-            plt.plot(comb_optimized[1, :], comb_optimized[0, :], label='comb')
+            # plt.plot(comb_optimized[1, :], comb_optimized[0, :], label='comb')
             plt.plot(global_state[i, 1, :], global_state[i, 0, :], label='init')
             plt.plot(truth[1, :], truth[0, :], label="truth")
             plt.legend()
             plt.show()
 
 
-    results_dict = dict()
-    results_dict['avg_REO_error'] = sum(REO_error_list) / float(num_robots)
-    results_dict['avg_GPO_error'] = sum(GPO_error_list) / float(num_robots)
-    results_dict['avg_REO_iter'] = REO_avg_iter_sum / float(num_robots)
-    results_dict['avg_GPO_iter'] = GPO_avg_iter_sum / float(num_robots)
-    results_dict['max_REO_error'] = max(REO_error_list)
-    results_dict['max_GPO_error'] = max(GPO_error_list)
-    results_dict['num_REO_correct'] = REO_correct_count
-    results_dict['num_GPO_correct'] = GPO_correct_count
-    results_dict['REO_errors'] = REO_error_list
-    results_dict['GPO_errors'] = GPO_error_list
-    results_dict['GPO_errors'] = GPO_error_list
-    results_dict['num_comb_correct'] = comb_correct_count
-    results_dict['max_comb_error'] = max(comb_error_list)
-    results_dict['avg_comb_iter'] = comb_avg_iter_sum / float(num_robots)
-    results_dict['avg_comb_error'] = sum(comb_error_list) / float(num_robots)
+    # results_dict = dict()
+    # results_dict['avg_REO_error'] = sum(REO_error_list) / float(num_robots)
+    # results_dict['avg_GPO_error'] = sum(GPO_error_list) / float(num_robots)
+    # results_dict['avg_REO_iter'] = REO_avg_iter_sum / float(num_robots)
+    # results_dict['avg_GPO_iter'] = GPO_avg_iter_sum / float(num_robots)
+    # results_dict['max_REO_error'] = max(REO_error_list)
+    # results_dict['max_GPO_error'] = max(GPO_error_list)
+    # results_dict['num_REO_correct'] = REO_correct_count
+    # results_dict['num_GPO_correct'] = GPO_correct_count
+    # results_dict['REO_errors'] = REO_error_list
+    # results_dict['GPO_errors'] = GPO_error_list
+    # results_dict['GPO_errors'] = GPO_error_list
+    # # results_dict['num_comb_correct'] = comb_correct_count
+    # results_dict['max_comb_error'] = max(comb_error_list)
+    # results_dict['avg_comb_iter'] = comb_avg_iter_sum / float(num_robots)
+    # results_dict['avg_comb_error'] = sum(comb_error_list) / float(num_robots)
 
 
     for key, item in results_dict.iteritems():
@@ -335,11 +345,12 @@ def run():
     plt.figure(1)
     plt.clf()
     plt.subplot(211)
-    plt.title("GPO RMS error")
-    plt.hist(GPO_error_list, 100, normed=1, facecolor="blue", alpha=0.5, range=[0, 12])
-    plt.subplot(212)
-    plt.title("combined RMS error")
-    plt.hist(comb_error_list, 100, normed=1, facecolor="green", alpha=0.5, range=[0, 0.015])
+    plt.title("REO with SGD error")
+    for i in xrange(6):
+        plt.hist(REO_SGD_error_lists[i*5], 100, normed=1, alpha=0.5, range=[0, 0.015], label=str(i*5)+"%")
+    # plt.subplot(212)
+    # plt.title("REO wihout SGD error")
+    # plt.hist(REO_error_list, 100, normed=1, facecolor="green", alpha=0.5, range=[0, 0.015])
 
 
     plt.show()

@@ -92,7 +92,7 @@ class REO():
             f.write('EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n' % (l[3], l[4], l[0], l[1], l[2], lc_omegas[i][0][0], 0, 0, lc_omegas[i][1][1], 0, lc_omegas[i][2][2]))
             i += 1
 
-    def optimize(self, z_bar, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, iters, epsilon, x0 = [], SGD=False):
+    def optimize(self, z_bar, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, iters, epsilon, x0 = [], SGD=False, SGD_rate=0):
 
         # create giant combined omega
         Omega = scipy.sparse.block_diag(Omegas).toarray()
@@ -124,8 +124,8 @@ class REO():
             b = -Omega.dot(delta.flatten(order='F'))
 
             for i in range(len(cycles)):
-                if SGD:
-                    if np.random.rand(1) < 0.5:
+                if SGD and diff > epsilon**0.5:
+                    if np.random.rand(1) < SGD_rate:
                         continue
                 this_edges = z_hat[:, cycles[i]]
                 this_dirs = dirs[cycles[i]]
