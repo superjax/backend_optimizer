@@ -65,15 +65,30 @@ The results of this study, shown in Figure~\ref{fig:global_heading_error_results
 
 \subsection{Rejection of False Loop Closures}
 
-Another benefit of the relative edge parameterization is the identification of false loop closures.  In REO, if we look at the uncertainty-weighted deviations of each edge and loop closure, a false loop closure typically has a large number of unlikely deviations in most of the edges which are a part of the loop.  To illustrate this, a longer, 'manhattan world' trajectory was generated and provided 10 loop closures.  One of these loop closures was intentionally initialized falsely.  The naive optimization discovered by REO and GPO, without any additional information converged to an incorrect optimum.  If we looked at the deviation of edges in a loop, weighted by the uncertainty on that edge, the weighted RMS error of that particular edge was three orders of magnitude larger than other loops.  The likelihood of such a loop closure being valid is so low, that we can safely remove it from the optimization.  We used a hueristic in which we removed loop closures with a total cost greater than $3\sigma$.  To illustrate this process, a longer 'manhattan world' trajectory was generated and supplied with 10 loop closures, one of which was intentionally false.  GPO and the naive implementation of REO considered this false loop closure and ended up converging to an incorrect solution.  The robust version of REO, which correctly identified the false loop closure, rejected it and converged to the proper solution (See Figure)  A table of the weighted RMS error on each edge in shown in table.
+Another benefit of the relative edge parameterization is the identification of false loop closures.  In REO, if we look at the uncertainty-weighted deviations of each edge in a loop closure, a false loop closure typically has a large number of unlikely deviations in most of the edges which are a part of the loop.   The cost of each loop closure is readily apparent in the evaluation of equation~\ref{eq:edge_update}. To illustrate this, a longer, 'manhattan world' trajectory was generated and provided 10 loop closures.  One of these loop closures was intentionally initialized falsely.  The naive optimization discovered by REO and GPO, without any additional information converged to an incorrect optimum.  If we looked at the deviation of edges in a loop, weighted by the uncertainty on that edge, the weighted RMS error of that particular edge was three orders of magnitude larger than other loops.  The likelihood of such a loop closure being valid is so low, that we can safely remove it from the optimization.  We used a hueristic in which we removed loop closures with a total cost greater than $3\sigma$.  To illustrate this process, a longer 'manhattan world' trajectory was generated and supplied with 10 loop closures, one of which was intentionally false.  GPO and the naive implementation of REO considered this false loop closure and ended up converging to an incorrect solution.  A table of the weighted RMS error on each edge in shown in table~\ref{tab:false_loop_closure}.  Because the false loop closure had a weighted cost greater than $3\sigma$, the robust version of REO correctly identified the false loop closure, rejected it and converged to the proper solution (See Figure~\ref{fig:false_loop_closure})
+\begin{table}
+  \begin{center}
+    \begin{tabular}{|c|c|}
+      \hline
+      Loop Closure & Cost \\ \hline
+      $\mathcal{L}_0$ & 0.001 \\ \hline
+      $\mathcal{L}_1$ & 0.001 \\ \hline
+      $\mathcal{L}_2$ & 0.001 \\ \hline
+      $\mathcal{L}_3$ & 0.001 \\ \hline
+      $\mathcal{L}_4$ & 0.001 \\ \hline
+      $\mathcal{L}_5$ & 0.001 \\ \hline
+      $\mathcal{L}_5$ & 10.00 \\ \hline
+      $\mathcal{L}_7$ & 0.001 \\ \hline
+      $\mathcal{L}_8$ & 0.001 \\ \hline
+      $\mathcal{L}_9$ & 0.001 \\ \hline
+    \end{tabular}
+  \end{center}
+  \caption{ MADE UP DATA Cost of loop closures in manhattan world with a false loop closure while evaluating equation~\ref{eq:edge_update}.  Loop closure $\mathcal{L}_5$ was initialized falsely, and is obiously an unlikely loop closure.}
+  \label{tab:false_loop_closure}
+\end{table}
 
-% \begin{table}
-%   \caption{RMS error of loop closures in manhattan world with a false loop closure}
-%   \label{tab:false_loop_closure}
-% \end{table}
-
-\begin{figure}
-  % \includegraphics{figures/false_loop_closure.png}
+\begin{figure}[H]
+  \includegraphics[width=0.7\textwidth]{figures/robust_lc_rejection.jpg}
   \caption{Results of a simulation study with a manhattan world trajectory supplied with 10 loop closures (shown in bold magenta).  One loop closure (shown in red) was falsely applied.  This loop closure was easily identified by the robust version of REO and removed}
   \label{fig:false_loop_closure}
 \end{figure}
@@ -96,13 +111,12 @@ Because we will use GPO to perform the bulk of refining the optimization, and ar
 
 To illustrate this point, a large simulation study was performed in a large manhattan world with 100 agents.  These agents were initialized arbitrarily in the world, without knowledge of their global position.  For the sake of plotting and describing the graph, we will discuss the world view of the first agent, initialized in the center of the world.  This is an arbitrary distinction, and any arguments about the first agent could apply to any and all agents. Loop closures were simulated between agents with heading error sampled from $\mathcal{N}(0, 5^\circ)$.  When the first loop closure was detected, the mean translation and rotation consistent with the loop closure was applied to the new pose graph and the graphs were combined.  When a second loop closure was discovered between these agents, 3 iterations of REO was used to align the minimum set of edges describing the loop closure of these new agents with the first.  The mean translation and rotation applied to the edges in this loop were then applied to all edges in the new agent's graph, to align it with the first agent.  After this initial alignment by REO, the two pose graphs were then combined and optimized with GPO.  Any additional loop closures were optimized with GPO directly, under the assumption that the two subgraphs were connected enough to avoid large alignment errors.
 
-This simulation was repeated with increasing error in heading, and a comparison of whether or not the REO initialization step was used to initialize the graph shows that REO is necessary after heading error exceeded $\mathcal{N}(0,5^\circ)$.  The threshold for performing an REO alignment is also likely a function of the time between loop closures, and more robust versions of this alignment algorithm might continue to perform REO alignments after a period of disconnection, because of the compounding of heading error.
+This simulation was repeated with increasing error in heading, and a comparison of whether or not the REO initialization step was used to initialize the graph shows that REO is necessary after heading error exceeded $\mathcal{N}(0,5^\circ)$.  The threshold for performing an REO alignment is also likely a function of the time between loop closures, and more robust versions of this alignment algorithm might continue to perform REO alignments after a period of disconnection, because of the compounding of heading error.  This simulation study was performed in real time on a laptop computer, indicating the scalability of using a pose graph optimization as the backend to fuse a map created by multiple agents.
 
-% how to use them together
-% To overcome these issues, we propose a two-fold solution.  To reduce the number of terms summed in the second term of Equation~\ref{eqn:cost_function}, we propose stochastically iterating over smaller loop closures in a well-connected pose graph and optimizing only a selection at a time.  To reduce the size of the optimization and avoid a costly dense matrix decomposition, we will exploit the relative nature of edge-based optimization to recursively break the full optimization into small, easy-to-manage problems.  This recursive process has the added benefit of producing completely parallelizeable independent computations which can be distributed to a GPU for fast evaluation.
+As shown in Figure~\ref{fig:manhattan_world_results}, incorporating agents far away from the origin caused GPO to diverge, primarily because of the compounding heading error which results in a bad initialization for the pose optimization.  Using a relative edge alignment step prior to pose optimization prevented this error from causing divergence.  While an REO-only optimization fell behind real time if used for such complicated graphs, the addition of a 3-iteration REO alignment on a subset of edges prior to global pose optimization incurred a constant 0.001s cost to the optimization but drastically improved robustness.
 
-% While these solutions improve the scaleability of edge optimization, it still does not compete with the state-of-the-art global pose graph optimization libraries in terms of speed.  Due to the different parameterization, however, it can quickly bring a poorly initialized graph into a region where global pose graph optimization can quickly and reliably converge to a solution.  Therefore, w
-% Demonstrate how awesome this is
-
-% Large heading errors with a single iteration of edge optimization
-% Global heading misalignment with a single iteration of edge optimization
+\begin{figure}[H]
+  \includegraphics[width=0.5\textwidth]{figures/manhattan_world_sim.jpg}
+  \caption{Results of large simulation study with 100 agents navigating a manhattan world.  Each agent was initialized with no prior understanding of the other agent's locations.  The initial position of the first agent was used as the origin for plotting purposes and for initializing GPO without the REO alignment step.  On the left we see the results of using GPO only.  In this case, the optimization diverged after incorporating agents a long distance from the origin, from the compounding of heading error.  On the right, we see that performing an REO alignment step prevented this from happening and kept GPO robust to this sort of error.}
+  \label{fig:manhattan_world_results}
+\end{figure}
