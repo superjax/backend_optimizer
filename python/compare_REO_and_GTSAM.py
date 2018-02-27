@@ -321,22 +321,22 @@ def run():
             plt.show()
 
 
-    # results_dict = dict()
-    # results_dict['avg_REO_error'] = sum(REO_error_list) / float(num_robots)
-    # results_dict['avg_GPO_error'] = sum(GPO_error_list) / float(num_robots)
-    # results_dict['avg_REO_iter'] = REO_avg_iter_sum / float(num_robots)
-    # results_dict['avg_GPO_iter'] = GPO_avg_iter_sum / float(num_robots)
-    # results_dict['max_REO_error'] = max(REO_error_list)
-    # results_dict['max_GPO_error'] = max(GPO_error_list)
-    # results_dict['num_REO_correct'] = REO_correct_count
-    # results_dict['num_GPO_correct'] = GPO_correct_count
-    # results_dict['REO_errors'] = REO_error_list
-    # results_dict['GPO_errors'] = GPO_error_list
-    # results_dict['GPO_errors'] = GPO_error_list
-    # # results_dict['num_comb_correct'] = comb_correct_count
-    # results_dict['max_comb_error'] = max(comb_error_list)
-    # results_dict['avg_comb_iter'] = comb_avg_iter_sum / float(num_robots)
-    # results_dict['avg_comb_error'] = sum(comb_error_list) / float(num_robots)
+    results_dict = dict()
+    results_dict['avg_REO_error'] = sum(REO_error_list) / float(num_robots)
+    results_dict['avg_GPO_error'] = sum(GPO_error_list) / float(num_robots)
+    results_dict['avg_REO_iter'] = REO_avg_iter_sum / float(num_robots)
+    results_dict['avg_GPO_iter'] = GPO_avg_iter_sum / float(num_robots)
+    results_dict['max_REO_error'] = max(REO_error_list)
+    results_dict['max_GPO_error'] = max(GPO_error_list)
+    results_dict['num_REO_correct'] = REO_correct_count
+    results_dict['num_GPO_correct'] = GPO_correct_count
+    results_dict['REO_errors'] = REO_error_list
+    results_dict['GPO_errors'] = GPO_error_list
+    results_dict['GPO_errors'] = GPO_error_list
+    # results_dict['num_comb_correct'] = comb_correct_count
+    results_dict['max_comb_error'] = max(comb_error_list)
+    results_dict['avg_comb_iter'] = comb_avg_iter_sum / float(num_robots)
+    results_dict['avg_comb_error'] = sum(comb_error_list) / float(num_robots)
 
 
     for key, item in results_dict.iteritems():

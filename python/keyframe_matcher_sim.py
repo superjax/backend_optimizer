@@ -6,7 +6,7 @@ from math import *
 
 
 class KeyframeMatcher():
-    def __init__(self):
+    def __init__(self, cov):
         self.keyframe_index_to_id_map = dict()
         self.keyframe_id_to_index_map = dict()
         self.new_keyframes = []
@@ -15,6 +15,7 @@ class KeyframeMatcher():
         self.tree = []
         self.keyframe_matcher = kdtree.KDTree()
         self.LC_threshold = 0.9
+        self.covariance = cov
 
     def add_keyframe(self, KF, node_id):
         self.new_keyframes.append([node_id, KF[0], KF[1], KF[2]])
@@ -40,12 +41,11 @@ class KeyframeMatcher():
                 transform = self.find_transform(keyframe[1:], to_keyframe[1:])
 
                 # Add noise to loop closure measurements
-                covariance = [[0.001, 0, 0], [0, 0.001, 0], [0, 0, 0.001]]
-                noise = np.array([np.random.normal(0, covariance[0][0]),
-                                  np.random.normal(0, covariance[1][1]),
-                                  np.random.normal(0, covariance[2][2])])
+                noise = np.array([np.random.normal(0, self.covariance[0][0]),
+                                  np.random.normal(0, self.covariance[1][1]),
+                                  np.random.normal(0, self.covariance[2][2])])
                 new_loop_closure['transform'] = self.concatenate_transform(transform, noise)
-                new_loop_closure['covariance'] = covariance
+                new_loop_closure['covariance'] = self.covariance
                 loop_cloures.append(new_loop_closure)
         return loop_cloures
 

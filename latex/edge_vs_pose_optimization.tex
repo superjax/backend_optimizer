@@ -3,16 +3,16 @@
 \section{Comparison: Relative Edge vs. Pose Optimization}
 
 % show that they are equivalent
-It can be plainly observed from comparing Eq~\ref{eqn:global_opt} and Eq~\ref{eqn:relative_opt} that relative edge optimization simply parametertizes the same cost function with relative edge constraints as opposed to global constraints and therefore should result in an equivalent solution.  However, due to the different linearization between the two parameterizations, several simulation studies were performed to show the similarities and differences of global pose and edge-based optimization. Each study focused on the optimization of the pose graph of a house-shaped trajectory, shown in Figure~\ref{fig:house_trajectory}.  This simple trajectory was chosen primarily because the trajectory is simple enough that properly converged graphs are very easy to identify, but also complex enough to illustrate non-trivial items of discussion.  The LevenbergMarquadt optimizer ~\cite{LM Optimization} implemented in GTSAM~\cite{Dellaert2012 - GTSAM} was used as the global pose optimization (GPO) algorithm, while an implementation of Algorithm~\ref{algo:reversed} was used for relative edge optimization (REO).  To evaluate performance of these optimizations, we employed the following RMS error metric, which can be described as the difference between the optimized global pose positions found by optimizer $j$ and optimizer $l$.
-
+It can be plainly observed from comparing Eq~\ref{eqn:global_opt} and Eq~\ref{eqn:relative_opt} that relative edge optimization simply parametertizes the same cost function with relative edge constraints as opposed to global constraints and therefore should result in an equivalent solution.  However, due to the different linearization between the two parameterizations, several simulation studies were performed to show the similarities and differences of global pose and edge-based optimization. Each study focused on the optimization of the pose graph of a house-shaped trajectory in $SE(3)$ shown in Figure~\ref{fig:house_trajectory}.  This simple trajectory was chosen primarily because the trajectory is simple enough that properly converged graphs are very easy to identify, but also complex enough to illustrate non-trivial items of discussion.  The Levenberg-Marquadt optimizer ~\cite{LM Optimization} implemented in GTSAM~\cite{Dellaert2012 - GTSAM} was used as the global pose optimization (GPO) algorithm, while an implementation of Algorithm~\ref{algo:reversed} was used for relative edge optimization (REO).  To evaluate performance of these optimizations, we employed the following RMS error metric, which can be described as the difference between the optimized global pose positions found by optimizer $j$ and optimizer $l$
 \begin{align}
-    J_{RMS}(\xhat^j, \xhat^l) = \sum_{i=0}^n \lVert \xhat^j_i - \xhat^l_i \rVert
+    J_{RMS}(\xhat^j, \xhat^l) = \sum_{i=0}^n \lVert \xhat^j_i - \xhat^l_i \rVert.
     \label{eq:RMS_error}
 \end{align}
+The heading state of each vertex was not considered in the RMS error metric to avoid scaling ambiguity between position and heading error.
 
 \subsection{Equivalent in Well-Conditioned Case}
 
-The first study illustrates that in a typical, well-conditioned trajectory the optimizations perform equivalently.  The true house trajectory was corrupted with small amounts of random gaussian noise on both translation and heading, had a random selection of edges reversed and a loop closure placed between nodes at the bottom left corner of the trajectory. This was repeated 10,000 times.  Every one of these optimizations produced virtually identical results between global pose and edge-based optimization.  A histogram of RMS error between the global pose of each node of the solution found by both optimizations is shown in Figure~\ref{fig:convergence_house}.  It should be noted that the addition of small translation noise in the trajectory results in a global minima not located at the true trajectory.  This is typical of all pose graph optimizations as described by~\cite{POSE_GRAPH_ERROR}.  Therefore, the optimization approaches are best compared directly with one another, rather than against the ground truth.
+The first study illustrates that in a typical, well-conditioned trajectory the optimizations perform equivalently.  The true house trajectory was corrupted with small amounts of random gaussian noise on both translation and heading, had a random selection of edges reversed and a loop closure placed between nodes at the bottom left corner of the trajectory.  An example of one of these trajectories is shown in Figure~\ref{fig:house_trajectory}. 10,000 of these trajectories were solved by both optimization routines.  Every one of these optimizations produced virtually identical results between global pose and edge-based optimization.  A histogram of RMS error between the global pose of each node of the solution found by both optimizations is shown in Figure~\ref{fig:convergence_house}.  It should be noted that the addition of small translation noise in the trajectory results in a global minima not located at the true trajectory.  This is typical of all pose graph optimizations and is described by~\cite{POSE_GRAPH_ERROR}.  Therefore, the optimization approaches are best compared directly with one another, rather than against the ground truth.
 
 \begin{figure}
   \includegraphics[width=0.7\textwidth]{figures/house_trajectory.png}
@@ -29,7 +29,7 @@ The first study illustrates that in a typical, well-conditioned trajectory the o
 \subsection{Large Heading Errors}
 % describe differences (pros/cons)
 % Talk about crazy heading error
-Differences between the performance of global pose graph and relative edge-based optimizations can be observed by magnifying linearization errors in the underlying parameterization. As a first example, a random house trajectory was generated with perfect translation measurements, but heading errors sampled from $\mathcal{N}(0, 33^\circ)$. Five perfect randomly assigned loop closures were added to the pose graph and the graph was optimized by both GPO and REO.  This process was also repeated 10,000 times.  Figure~\ref{fig:GPO_heading_divergence} shows an example of one of these trajectories, and a histogram of the RMS error of the two approaches is shown in Figure~\ref{fig:GPO_bad_histogram}. REO was able to find the true solution to within 0.001m for 90\% of the graphs, with a max error of 0.0100m and mean of 0.0004585m in an average of 7.546 iterations.  GPO converged to within 0.001m on only a single trajectory, had a max error of 9.825$\times 10 ^{39}m$ and a mean error of 9.856$\times 10 ^{35}$.
+Differences between the performance of global pose graph and relative edge-based optimizations can be observed by magnifying linearization errors in the underlying parameterization. As a first example, a random house trajectory was generated with perfect translation measurements, but heading errors sampled from $\mathcal{N}(0, 33^\circ)$. Five perfect, randomly assigned loop closures were added to the pose graph and the graph was optimized by both GPO and REO.  This process was also repeated 10,000 times.  Figure~\ref{fig:GPO_heading_divergence} shows an example of one of these trajectories, and a histogram of the RMS error of the two approaches is shown in Figure~\ref{fig:GPO_bad_histogram}. REO was able to find the true solution to within 0.001m for 90\% of the graphs, with a max error of 0.0100m and mean of 0.0004585m in an average of 7.546 iterations.  GPO converged to within 0.001m on only a single trajectory, had a max error of 9.825$\times 10 ^{39}$m and a mean error of 9.856$\times 10 ^{35}$m.
 
 \begin{figure}[H]
   \includegraphics[width=0.5\textwidth]{figures/GPO_diverged.png}
@@ -47,9 +47,9 @@ Differences between the performance of global pose graph and relative edge-based
 \subsection{Global Heading Misalignment}
 
 % Talk about bad initialization
-A second illustration of the significance in the difference in parameterization can be shown by introducing a large error in initial heading to a pose graph.  This sort of situation often occurs in GPS-denied situations, when, for lack of better information, an agent is initialized in a nominal direction which could be exactly opposite its true global heading.  Only after global measurements are incorporated is the agent able to calculate its original heading.  To illustrate this, we performed a simulation study in which the house trajectory was initialized with varying values of error in global orientation. Small amounts of translation noise ($\mathcal{N}(0, 0.1m)$) and heading noise ($\mathcal{N}(0, 1.8^\circ)$) were applied to each edge and three perfect global measurements were applied using a virtual zero node per the method described in~\cite{CITE}.  In this method, an additional node is placed at the origin of the graph with an infinitely uncertain edge to the first node.  Global measurements are made with respect to this virtual node, therefore allowing the pose graph to shift and or rotate without incurring cost from changing the virtual edge.  Figure~\ref{fig:global_heading_error_trajectory} shows a sample result from this study.
+A second illustration of the significance in the difference in parameterization can be shown by introducing a large error in initial heading to a pose graph.  This sort of situation often occurs in GPS-denied situations, when, for lack of better information, an agent is initialized in a nominal direction which could be exactly opposite its true global heading.  Only after global measurements are incorporated is the agent able to calculate its original heading.  To illustrate this, we performed a simulation study in which the house trajectory was initialized with varying values of error in global orientation. Small amounts of translation noise ($\mathcal{N}(0, 0.1m)$) and heading noise ($\mathcal{N}(0, 1.8^\circ)$) were applied to each edge and three perfect global measurements were applied using a virtual zero node per the method described in~\cite{CITE}.  In this method, an additional node is placed at the origin of the graph with a zero information "virtual" edge to the first odometry node.  Global measurements are made with respect to this virtual node, therefore allowing the pose graph to shift and or rotate without incurring cost from changing the virtual edge.  Figure~\ref{fig:global_heading_error_trajectory} shows a sample result from this study.
 
-The results of this study, shown in Figure~\ref{fig:global_heading_error_results} illustrate how GPO struggles to optimize this trajectory as initial heading error increase The node at the peak of the house shape is approximately 4 meters away from its initial condition, despite a single edges.  While there are methods which have been shown to handle this issue in pose graph literature, such as~\cite{Paul, others}, when compared with edge optimization, these methods can be described as workarounds to deal with problems inherent in the parameterization.  The fundamental problem is the extremely large position errors which occur in the pose representation due to heading misalignment, and the uneven manifold which the pose representation must traverse in order to arrive at the global minima from a poorly initialized state.  In contrast, edge parameterization typically incurs smaller magnitude errors and therefore easily deals with problems such as arbitrarily large heading misalignment.
+The results of this study, shown in Figure~\ref{fig:global_heading_error_results}, illustrate how GPO struggles to optimize this trajectory as initial heading error increases.  In the worst case, the node at the peak of the house shape is approximately 4 meters away from its initial condition, despite the only source of error being in the virtual edge.  While there are methods which have been shown to handle this issue in pose graph literature, such as~\cite{Paul, others}, when compared with edge optimization, these methods can be described as workarounds to deal with problems inherent in the parameterization.  The fundamental problem is the extremely large position errors which occur in the pose representation due to heading misalignment, and the uneven manifold which the pose representation must traverse in order to arrive at the global minima from a poorly initialized state.  In contrast, edge parameterization typically incurs smaller magnitude errors and therefore easily deals with problems such as arbitrarily large heading misalignment.
 
 \begin{figure}[H]
   \includegraphics[width=0.7\textwidth]{figures/global_heading_trajectory.png}
@@ -63,35 +63,35 @@ The results of this study, shown in Figure~\ref{fig:global_heading_error_results
   \label{fig:global_heading_error_results}.
 \end{figure}
 
-\subsection{Rejection of False Loop Closures}
-
-Another benefit of the relative edge parameterization is the identification of false loop closures.  In REO, if we look at the uncertainty-weighted deviations of each edge in a loop closure, a false loop closure typically has a large number of unlikely deviations in most of the edges which are a part of the loop.   The cost of each loop closure is readily apparent in the evaluation of equation~\ref{eq:edge_update}. To illustrate this, a longer, 'manhattan world' trajectory was generated and provided 10 loop closures.  One of these loop closures was intentionally initialized falsely.  The naive optimization discovered by REO and GPO, without any additional information converged to an incorrect optimum.  If we looked at the deviation of edges in a loop, weighted by the uncertainty on that edge, the weighted RMS error of that particular edge was three orders of magnitude larger than other loops.  The likelihood of such a loop closure being valid is so low, that we can safely remove it from the optimization.  We used a hueristic in which we removed loop closures with a total cost greater than $3\sigma$.  To illustrate this process, a longer 'manhattan world' trajectory was generated and supplied with 10 loop closures, one of which was intentionally false.  GPO and the naive implementation of REO considered this false loop closure and ended up converging to an incorrect solution.  A table of the weighted RMS error on each edge in shown in table~\ref{tab:false_loop_closure}.  Because the false loop closure had a weighted cost greater than $3\sigma$, the robust version of REO correctly identified the false loop closure, rejected it and converged to the proper solution (See Figure~\ref{fig:false_loop_closure})
-\begin{table}
-  \begin{center}
-    \begin{tabular}{|c|c|}
-      \hline
-      Loop Closure & Cost \\ \hline
-      $\mathcal{L}_0$ & 0.001 \\ \hline
-      $\mathcal{L}_1$ & 0.001 \\ \hline
-      $\mathcal{L}_2$ & 0.001 \\ \hline
-      $\mathcal{L}_3$ & 0.001 \\ \hline
-      $\mathcal{L}_4$ & 0.001 \\ \hline
-      $\mathcal{L}_5$ & 0.001 \\ \hline
-      $\mathcal{L}_5$ & 10.00 \\ \hline
-      $\mathcal{L}_7$ & 0.001 \\ \hline
-      $\mathcal{L}_8$ & 0.001 \\ \hline
-      $\mathcal{L}_9$ & 0.001 \\ \hline
-    \end{tabular}
-  \end{center}
-  \caption{ MADE UP DATA Cost of loop closures in manhattan world with a false loop closure while evaluating equation~\ref{eq:edge_update}.  Loop closure $\mathcal{L}_5$ was initialized falsely, and is obiously an unlikely loop closure.}
-  \label{tab:false_loop_closure}
-\end{table}
-
-\begin{figure}[H]
-  \includegraphics[width=0.7\textwidth]{figures/robust_lc_rejection.jpg}
-  \caption{Results of a simulation study with a manhattan world trajectory supplied with 10 loop closures (shown in bold magenta).  One loop closure (shown in red) was falsely applied.  This loop closure was easily identified by the robust version of REO and removed}
-  \label{fig:false_loop_closure}
-\end{figure}
+% \subsection{Rejection of False Loop Closures}
+%
+% Another benefit of the relative edge parameterization is the identification of false loop closures.  In REO, if we look at the uncertainty-weighted deviations of each edge in a loop closure, a false loop closure typically has a large number of unlikely deviations in most of the edges which are a part of the loop.   The cost of each loop closure is readily apparent in the evaluation of equation~\ref{eq:edge_update}. To illustrate this, a longer, 'manhattan world' trajectory was generated and provided 10 loop closures.  One of these loop closures was intentionally initialized falsely.  The naive optimization discovered by REO and GPO, without any additional information converged to an incorrect optimum.  If we looked at the deviation of edges in a loop, weighted by the uncertainty on that edge, the weighted RMS error of that particular edge was three orders of magnitude larger than other loops.  The likelihood of such a loop closure being valid is so low, that we can safely remove it from the optimization.  We used a hueristic in which we removed loop closures with a total cost greater than $3\sigma$.  To illustrate this process, a longer 'manhattan world' trajectory was generated and supplied with 10 loop closures, one of which was intentionally false.  GPO and the naive implementation of REO considered this false loop closure and ended up converging to an incorrect solution.  A table of the weighted RMS error on each edge in shown in table~\ref{tab:false_loop_closure}.  Because the false loop closure had a weighted cost greater than $3\sigma$, the robust version of REO correctly identified the false loop closure, rejected it and converged to the proper solution (See Figure~\ref{fig:false_loop_closure})
+% \begin{table}
+%   \begin{center}
+%     \begin{tabular}{|c|c|}
+%       \hline
+%       Loop Closure & Cost \\ \hline
+%       $\mathcal{L}_0$ & 0.001 \\ \hline
+%       $\mathcal{L}_1$ & 0.001 \\ \hline
+%       $\mathcal{L}_2$ & 0.001 \\ \hline
+%       $\mathcal{L}_3$ & 0.001 \\ \hline
+%       $\mathcal{L}_4$ & 0.001 \\ \hline
+%       $\mathcal{L}_5$ & 0.001 \\ \hline
+%       $\mathcal{L}_5$ & 10.00 \\ \hline
+%       $\mathcal{L}_7$ & 0.001 \\ \hline
+%       $\mathcal{L}_8$ & 0.001 \\ \hline
+%       $\mathcal{L}_9$ & 0.001 \\ \hline
+%     \end{tabular}
+%   \end{center}
+%   \caption{ MADE UP DATA Cost of loop closures in manhattan world with a false loop closure while evaluating equation~\ref{eq:edge_update}.  Loop closure $\mathcal{L}_5$ was initialized falsely, and is obiously an unlikely loop closure.}
+%   \label{tab:false_loop_closure}
+% \end{table}
+%
+% \begin{figure}[H]
+%   \includegraphics[width=0.7\textwidth]{figures/robust_lc_rejection.jpg}
+%   \caption{Results of a simulation study with a manhattan world trajectory supplied with 10 loop closures (shown in bold magenta).  One loop closure (shown in red) was falsely applied.  This loop closure was easily identified by the robust version of REO and removed}
+%   \label{fig:false_loop_closure}
+% \end{figure}
 
 \subsection{Complementary Nature of Edge and Pose Optimization}
 
@@ -99,7 +99,7 @@ While relative edge optimization promises significant improvements in dealing wi
 
 With these shortcomings in mind, we propose that edge optimization be performed for just a few iterations in situations where global pose graphs may struggle to find global minima to initialize the graph.  After a great deal of error has been removed by the more expensive, but more robust edge optimization, global pose graph optimization can very quickly find a global minima even in highly-connected and complicated graphs, where repeated edge optimization may become intractable.
 
-To demonstrate the effectiveness of this strategy, we repeated the global heading error simulation study with a single iteration of REO to initialize the graph, the result of which was then passed to GPO for refining.  In all three situations, the combination of both REO and GPO resulted in strong robustness to initialization errors and resulted in 100\% convergence.
+To demonstrate the effectiveness of this strategy, we repeated the global heading error simulation study with a single iteration of REO to initialize the graph, the result of which was then used to initialize a GPO routine which was used for refining.  In all three situations, the combination of both REO and GPO resulted in strong robustness to initialization errors and resulted in 100\% convergence.
 
 \begin{figure}[H]
   \includegraphics[width=0.5\textwidth]{figures/combined_global_heading_results.png}

@@ -17,10 +17,8 @@ if __name__ == "__main__":
     robots = []
     controllers = []
     num_robots = 50
-    KF_frequency_s = 1.0
+    KF_frequency_s = 0.5
     plot_frequency_s = 10
-
-    kf_matcher = KeyframeMatcher()
 
     start_pose_range = [5, 5, 2]
 
@@ -35,9 +33,12 @@ if __name__ == "__main__":
     # start_poses[1] = [10, 0, pi/2]
 
     P_perfect = np.array([[0.00001, 0, 0], [0, 0.00001, 0], [0, 0, 0.00001]])
+    G = np.array([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.2]])
+    lc_cov = np.array([[0.3, 0, 0], [0, 0.3, 0], [0, 0, 0.3]])
 
     print("simulating robots")
 
+    kf_matcher = KeyframeMatcher(lc_cov)
     controllers = [Controller(start_poses[r]) for r in range(num_robots)]
     robots = [Robot(r, G, start_poses[r]) for r in range(num_robots)]
 

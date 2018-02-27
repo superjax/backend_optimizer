@@ -323,8 +323,10 @@ class Backend():
 
             # Now plot individual maps
             self.graphs_mutex.acquire()
-            for j in self.graphs.keys():
-                ax = plt.subplot(rows, cols, j + 2)
+            for l, j in enumerate(self.graphs.keys()):
+                if l >= self.max_subplots:
+                    break
+                ax = plt.subplot(rows, cols, l + 2)
                 if i == 0:
                     self.plot_graph(self.graphs[j]['graph'], axis_handle=ax, title=str(j) + ' truth', truth=True)
                 else:

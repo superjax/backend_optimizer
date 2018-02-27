@@ -5,32 +5,33 @@
 \subsection{Nomenclature}
 
 \begin{align*}
+\mathbf{x}_i & \text{: Pose of vertex $i$ with respect to global coordinate frame} \\
+\e_{ij}   & \text{: true edge between vertex $i$ and $j$}\\
 \emeas_{ij}   & \text{: edge measurement between vertex $i$ and $j$}\\
 \eest_{ij}    & \text{: current edge estimate} \\
-\Delta\e_{ij} & \text{: current edge update}\\
-\eest_{ij}^+  & \text{: new edge estimate}\\
-\emeas_{az}   & \text{: non-sequential edge measurement (loop closure)}\\
-\eest_{a-z}   & \text{: estimated edge between non-sequential vertex $a$ and $z$} \\
-\eest_{a-z}^+ & \text{: new estimated edge between non-sequential vertex $a$ and $z$} \\
+\Delta\e_{ij} & \text{: edge update}\\
+\eest_{ij}^+  & \text{: new edge estimate after update}\\
+% \emeas_{az}   & \text{: non-sequential edge measurement (loop closure)}\\
+\e_{a-z}   & \text{: edge between non-sequential vertex $a$ and $z$} \\
+% \eest_{a-z}^+ & \text{: new estimated edge between non-sequential vertex $a$ and $z$} \\
 %
 %
-n & \text{: Dimension of $\e$ } \\
-e & \text{: Number of odometry edges } \\
+% n & \text{: Dimension of $\e$ } \\
+% e & \text{: Number of odometry edges } \\
 %
 %
-\emeas   & \text{: all edge measurements, $\in \mathbb{R}^{en}$}\\
-\eest    & \text{: all edge estimates, $\in \mathbb{R}^{en}$}\\
-\Delta\e & \text{: all edge updates,  $\in \mathbb{R}^{en}$}\\
+% \emeas   & \text{: all edge measurements, $\in \mathbb{R}^{en}$}\\
+% \eest    & \text{: all edge estimates, $\in \mathbb{R}^{en}$}\\
+% \Delta\e & \text{: all edge updates,  $\in \mathbb{R}^{en}$}\\
 %
 %
 \Omega_{ij} & \text{: Information matrix associated with odometry edge (inverse covariance) } \\
-\Omega_{az} & \text{: Information matrix associated with loop closure edge } \\
+% \Omega_{az} & \text{: Information matrix associated with loop closure edge } \\
 %
 %
-\mathbf{x}_i & \text{: Pose of vertex $i$ with respect to global coordinate frame} \\
-\mathcal{O} & \text{: Set of odometry edges} \\
-\mathcal{L} & \text{: Some subset of loop closure constraints} \\
-\mathcal{O_L} & \text{: Set of odometry edges that form the redundant paths of $\mathcal{L}$} \\
+% \mathcal{O} & \text{: Set of odometry edges} \\
+% \mathcal{L} & \text{: Some subset of loop closure constraints} \\
+% \mathcal{O_L} & \text{: Set of odometry edges that form the redundant paths of $\mathcal{L}$} \\
 \end{align*}
 
 \subsection{Global Pose Optimization}
@@ -44,32 +45,16 @@ Pose graph optimization is typically formulated as a least-squares optimization 
   \label{eqn:cost_function}
 \end{align}
 
-The process then typically assumes the following steps to optimize the graph:
+The pose graph is typically initialized by first defining an intial global pose estimate for each vertex $\xhat_i$, then determing the estimated edges by differencing two connected vertices $\eest_{ij} = \xhat_j - \xhat_i$.  The problem is then to solve the following:
 
-\begin{enumerate}
-  \item define an initial global pose estimate for each vertex $\xhat_i$
-  \item determine the estimated edges by differencing two connected vertices $\eest_{ij} = \xhat_j - \xhat_i$
-  \item find the optimal set of vertex positions
+\begin{align}
+    \xhat^* = \argmin_{\xhat} F\Big(\eest(\xhat),\emeas \Big)
+     \label{eqn:global_opt}
+\end{align}
 
-  \begin{align}
-      \xhat^* = \argmin_{\xhat} F\Big(\eest(\xhat),\emeas \Big)
-	     \label{eqn:global_opt}
-	\end{align}
+In general, this is done using some variety of Gauss-Newton or Levendberg-Marquat optimization by iteratively restructuring the problem in the form of $A \Delta \x = b$ and solving for $\Delta\x$.  Significant work has been done in reducing the complexity of the $A$ matrix in this problem such that pose graph optimization~\cite{PAPERS} can be performed in real time under realistic modern computational constraints even for MAVs.
 
-
-   using Gauss-Newton or Levenberg-Marquardt optimization.
-\end{enumerate}
-
-The optimization process then takes place according to the following pattern:
-\begin{enumerate}
-	\item Express the cost function in terms of $\xhat^+ = \xhat + \Delta\x$
-	\item Linearize $\eest(\xhat)$ in terms of $\Delta\x$
-	\item Take the partial derivative of the cost function with respect to $\Delta\x$
-	\item Restructure the problem to be of the form $A \Delta \x = b$ and solve for $\Delta\x$.
-	\item Apply the update to $\xhat$ and repeat steps (1)-(5) until $\Delta\x < \epsilon$.
- \end{enumerate}
-
-Global pose optimization solves the system by projecting onto the Cartesian coordinate frame with respect to a privileged coordinate frame. When only relative information is available, the initial global pose estimates can be arbitrarily far from their true position in this frame. The iterative nature of the Newton method works ideally when close to the solution, but can converge on a local minimum otherwise.  Figure~\ref{fig:g2o_baseball_divergence} illustrates results of global pose optimization on a hardware experiment with a multirotor with both relative odometry measurements and global GPS measurements which was initialized with a 180$^\circ$ initial heading error.  The large heading error induces extremely large linearization errors, which causes global pose optimization to struggle in finding the global optima.
+These sparsification techniques require projecting onto the Cartesian coordinate frame with respect to a privileged coordinate frame. When only relative information is available, the initial global pose estimates can be arbitrarily far from their true position. The iterative nature of the Newton method works ideally when close to the solution, but can converge on a local minimum otherwise.  Figure~\ref{fig:g2o_baseball_divergence} show results of global pose optimization on a hardware experiment where a multirotor agent was first given only relative odometry measurements but later gained access to GPS.  Because no global information was initially available, the agent was initialized with zero heading, which was interpreted as directly north, while in actuality its true heading was almost exactly south.  The large initial heading error induced extremely large initial global pose estimates. These large errors caused global pose optimization to struggle in finding the global optima due to significant linearization error.
 
 \begin{figure}
   \includegraphics[width=0.7\textwidth]{figures/house_g2o_diverged.jpg}
@@ -144,7 +129,7 @@ The first term in Eq~\ref{eq:edge_update} causes the optimization to respect the
   \begin{align*}
   \eest_{ij}^+ = \emeas_{ij}  \text{ for } \{i,j\} \notin \mathcal{O_L}.
 \end{align*}
-In other words, any edge estimate that is not part of a redundant path is driven to its original measured state, and in no other way influence the optimization. We can finally move all constant terms to the right-hand side of the equation and write the final cost function.
+In other words, any edge estimate that is not part of a redundant path is driven to its original measured state, and in no other way influence the optimization. We can finally move all constant terms to the right-hand side of the equation and write the final form of cost function.
 \begin{align}
   \boldsymbol{\Omega} \Delta\e^*  + \sum_{\{a,z\} \in \mathcal{L}}
   \frac{\partial h(\eest_{a-z},\Delta\e)}{\partial \Delta\e}^\top
@@ -167,7 +152,7 @@ such that the second-order approximation of the compounding of a series of edges
   h(\eest_{a-z},\mathbf{0}) + \mathbf{H}_{az} \Delta\e,
 \end{align*}
 
-and we will use the first order approximation for the partial
+and we will use the first order approximation for the partial derivative
 \begin{align*}
   \frac{\partial h(\e_{a-z},\Delta\e)}{\partial \Delta\e} &\approx \mathbf{H}_{az}.
 \end{align*}
@@ -180,11 +165,13 @@ With this approximation, Equation \ref{eqn:opt} simplifies to
   \Omega_{az}\mathbf{H}_{az} \right) \Delta\e^*
   &= -\boldsymbol{\Omega}(\eest -\emeas) - \sum_{\{a,z\} \in \mathcal{L}}
   \mathbf{H}_{az}^\top
-  \Omega_{az}(h(\eest_{a-z},\mathbf{0}) -\emeas_{az})
+  \Omega_{az}(h(\eest_{a-z},\mathbf{0}) -\emeas_{az}),
   \label{eqn:3d_opt}
 \end{align}
 
-An intuitive way of thinking about the difference between edge and pose optimization is to consider a system of connected springs, pinned to a corkboard at the junctions between springs.  Global Pose optimization seeks to reduce the total energy in the system by moving the pins in the direction most likely to reduce tension.  Edge optimization, on the other hand, could be considered as a similarly connected spring system, gliding on ice.  Edge optimization encodes proper correlations between edges in a connected set, and edges not in a connected set are able to move independent of any other edge.
+which can be solved using the Moore-Penrose pseudoinverse.
+
+An intuitive way of thinking about the difference between edge and pose optimization is to consider a system of connected springs, pinned to a corkboard at the junctions between springs.  Global Pose optimization seeks to reduce the total energy in the system by moving the pins in the direction most likely to reduce tension.  Edge optimization, on the other hand, could be considered as a similarly connected spring system, but gliding on ice.  Edge optimization encodes proper correlations between edges in a connected set, and edges not in a connected set are able to move independent of any other edge and independent of the global location of any pose.
 
 \subsection{Relative Edge Optimization in $SE(2)$}
 \label{sec:relative_edge_optimization_in_se2}
@@ -265,5 +252,7 @@ The Jacobian $\mathbf{H}_{az}$ can be calculated for an arbitrary set of edges f
   \end{algorithmic}
 \end{algorithm}
 
-% talk about how to incorporate global measurements
-\subsection{Global Measurement integration}
+% % talk about how to incorporate global measurements
+% \subsection{Global Measurement integration}
+%
+% Global measurements can be incorporated in a relative edge optimization framework using the same virtual zero technique used in global pose optimization as described in~\cite{VIRTUAL_ZERO}.
