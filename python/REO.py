@@ -31,6 +31,13 @@ def invert_edges(x, dirs, indexes):
         x[:, index] = invert_transform(x[:, index])
         dirs[index] *= -1.0
 
+def get_global_pose(edges, x0):
+    x = np.zeros((edges.shape[0], edges.shape[1] + 1))
+    x[:, 0] = x0
+    for i in range(edges.shape[1]):
+        x[:,i + 1] = concatenate_transform(x[:,i], edges[:,i])
+    return x
+
 
 class REO():
     def __init__(self):
@@ -92,7 +99,7 @@ class REO():
             f.write('EDGE_SE2 %d %d %f %f %f %f %f %f %f %f %f\n' % (l[3], l[4], l[0], l[1], l[2], lc_omegas[i][0][0], 0, 0, lc_omegas[i][1][1], 0, lc_omegas[i][2][2]))
             i += 1
 
-    def optimize(self, z_bar, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, iters, epsilon, x0 = [], SGD=False, SGD_rate=0):
+    def optimize(self, z_bar, dirs, Omegas, lcs, lc_omegas, lc_dirs, cycles, iters, epsilon, x0 = []):
 
         # create giant combined omega
         Omega = scipy.sparse.block_diag(Omegas).toarray()
@@ -124,9 +131,6 @@ class REO():
             b = -Omega.dot(delta.flatten(order='F'))
 
             for i in range(len(cycles)):
-                if SGD and diff > epsilon**0.5:
-                    if np.random.rand(1) < SGD_rate:
-                        continue
                 this_edges = z_hat[:, cycles[i]]
                 this_dirs = dirs[cycles[i]]
                 this_lc = lcs[:, i]
@@ -326,3 +330,43 @@ if __name__ == '__main__':
         print "error = ", diff, "iters =", iter
     plt.show()
 
+def REO_opt(edges, nodes, origin_node, num_iters, tol):
+
+    reo = REO()
+
+    odom = []
+    dirs = []
+    Omegas = []
+    lc = []
+    lc_dirs = []
+    lc_omegas = []
+    cycles = []
+
+    # process the input
+    for edge in edges:
+        from_id = int(edge[0].split("_")[1])
+        to_id = int(edge[1].split("_")[1])
+        # Consecutive nodes
+        if abs(to_id - from_id) == 1:
+            odom.append(map(float, [edge[2], edge[3], edge[4]]))
+            Omegas.append(np.diag(map(float, [edge[5], edge[6], edge[7]])))
+            if to_id == from_id + 1: # forwards
+                dirs.append(1)
+            elif to_id == from_id - 1: # backwards
+                dirs.append(-1)
+
+        # Loop closure
+        else:
+            lc.append([map(float, [edge[2], edge[3], edge[4]])])
+            lc_omegas.append(np.diag(map(float, [edge[5], edge[6], edge[7]])))
+            if to_id > from_id: # forwards
+                lc_dirs.append(1)
+                cycles.append([i + from_id for i in range(to_id - from_id)])
+            else: # backwards
+                cycles.append([i + to_id for i in range(from_id - to_id)])
+                lc_dirs.append(-1)
+
+    z_hat, diff, iters = reo.optimize(np.array(odom).T, np.array(dirs), Omegas, np.atleast_2d(np.array(lc).squeeze()).T,
+                                      lc_omegas, np.array(lc_dirs), np.array(cycles), num_iters, tol)
+    x_hat = get_global_pose(z_hat, np.array([0, 0, 0]))
+    return x_hat, iters

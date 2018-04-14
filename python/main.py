@@ -4,28 +4,29 @@ from robot import *
 from controller import *
 from tqdm import tqdm
 import os
+import time
 
 
 if __name__ == "__main__":
-    os.chdir("movie")
-    os.system('rm *.png')
-    os.system('rm *.avi')
-    os.chdir("..")
+    stamp = time.time()
+    os.chdir("plots")
+    os.mkdir(str(stamp))
+    os.chdir(str(stamp))
     dt = 0.1
-    time = np.arange(0, 600.01, dt)
+    time = np.arange(0, 300.01, dt)
 
     robots = []
     controllers = []
-    num_robots = 50
+    num_robots = 12
     KF_frequency_s = 0.5
     plot_frequency_s = 10
 
-    start_pose_range = [5, 5, 2]
+    start_pose_range = [5, 3, 2]
 
     start_poses = [[randint(-start_pose_range[0], start_pose_range[0])*10,
-                   randint(-start_pose_range[1], start_pose_range[1])*10,
-                   randint(-start_pose_range[2], start_pose_range[2])*pi/2] for r in range(num_robots)]
-    start_poses[0] = [0, 0, 0]
+                    (-1)**r * start_pose_range[1]*10,
+                    -np.pi/2.0 if r % 2 == 0 else np.pi/2.0] for r in range(num_robots)]
+    # start_poses[0] = [0, 0, 0]
     # start_poses[1] = [10, 0, pi/2]
     # start_poses[2] = [10, 10, pi]
     # start_poses[3] = [0, 10, 3*pi/2]
@@ -33,8 +34,8 @@ if __name__ == "__main__":
     # start_poses[1] = [10, 0, pi/2]
 
     P_perfect = np.array([[0.00001, 0, 0], [0, 0.00001, 0], [0, 0, 0.00001]])
-    G = np.array([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.2]])
-    lc_cov = np.array([[0.3, 0, 0], [0, 0.3, 0], [0, 0, 0.3]])
+    G = np.array([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]])
+    lc_cov = np.array([[0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.3]])
 
     print("simulating robots")
 

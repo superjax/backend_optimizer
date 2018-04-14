@@ -25,10 +25,10 @@ class Controller:
         if abs(delta_x) < self.intersection_radius and abs(delta_y) < self.intersection_radius:
             # We just entered an intersection
             random_number = random()
-            if random_number < 0.5:
+            if random_number < 0.9:
                 # Straight
                 next_waypoint = [self.grid_size, 0, 0]
-            elif random_number < 0.75:
+            elif random_number < 0.95:
                 # Left
                 next_waypoint = [0, -self.grid_size, -pi/2]
             else: # Right

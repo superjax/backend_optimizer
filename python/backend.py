@@ -338,8 +338,8 @@ class Backend():
         plt.pause(0.001)
 
         # Save figure
-        plt.figure(1).savefig("movie/truth_" + str(self.frame_number).zfill(4) + ".png")
-        plt.figure(2).savefig("movie/optimized_" + str(self.frame_number).zfill(4) + ".png")
+        plt.figure(1).savefig("truth_" + str(self.frame_number).zfill(4) + ".png")
+        plt.figure(2).savefig("optimized_" + str(self.frame_number).zfill(4) + ".png")
         self.frame_number += 1
 
         plt.ioff()

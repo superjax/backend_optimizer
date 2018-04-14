@@ -24,7 +24,7 @@ def generate_house(filename, angle_offset = 0, num_robots = 1000):
 
     dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    Omegas = [np.diag([1e3, 1e3, 1e3]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([1e2, 1e2, 1e4]) for i in range(perfect_edges.shape[1])]
 
     odometry = np.zeros((num_robots, 3, perfect_edges.shape[1]))
     global_estimate = np.zeros((num_robots, 3, perfect_edges.shape[1]+1))
@@ -46,10 +46,10 @@ def generate_house(filename, angle_offset = 0, num_robots = 1000):
         for j in range(cycle[0], cycle[1]):
             lc[:,i] = concatenate_transform(lc[:,i], perfect_edges[:,j])
 
-    lc_omega = [np.diag([1e3, 1e3, 1e3]) for i in range(lc.shape[1])]
+    lc_omega = [np.diag([1e7, 1e7, 1e7]) for i in range(lc.shape[1])]
 
     # Turn off some loop closures
-    active_lc = [0, 5, 8]
+    active_lc = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     lc = lc[:, active_lc]
     lc_omega = [lc_omega[i] for i in active_lc]
     cycles = [cycles[i] for i in active_lc]
@@ -58,8 +58,8 @@ def generate_house(filename, angle_offset = 0, num_robots = 1000):
     nodes_g2o_lists = []
 
     for robot in tqdm(range(num_robots)):
-        edge_noise = np.array([[0*np.random.normal(0, (1. / Omegas[i][0][0])**0.5) for i in range(perfect_edges.shape[1])],
-                               [0*np.random.normal(0, (1. / Omegas[i][1][1])**0.5) for i in range(perfect_edges.shape[1])],
+        edge_noise = np.array([[np.random.normal(0, (1. / Omegas[i][0][0])**0.5) for i in range(perfect_edges.shape[1])],
+                               [np.random.normal(0, (1. / Omegas[i][1][1])**0.5) for i in range(perfect_edges.shape[1])],
                                [np.random.normal(0, (1. / Omegas[i][2][2])**0.5) for i in range(perfect_edges.shape[1])]])
         edge_noise[:,0] = np.zeros(3) # No noise on first edge (virtual zero edge)
         odometry[robot,:,:] = perfect_edges  + edge_noise
@@ -102,77 +102,6 @@ def generate_house(filename, angle_offset = 0, num_robots = 1000):
     pickle.dump(data, f)
     f.close()
 
-
-def generate_data(filename):
-    trajectory_time = 600.1
-    dt = 0.01
-    time = np.arange(0, trajectory_time, dt)
-
-    KF_frequency_s = 1.0
-    num_trajectories = 100
-
-    Q = np.array([[5e-2, 0, 0], [0, 5e-2, 0], [0, 0, 2e-1]])
-
-    truth = []
-    odometry = []
-    keyframes = []
-
-    controller = Controller([0, 0, 0])
-    robots = MC_Robot(Q, [0, 0, 0], num_trajectories)
-    print "Generating Trajectories"
-
-    global_state = []
-    global_state.append(np.zeros((3, num_trajectories)))
-    for t in tqdm(time):
-        truth.append(robots.state())
-        u = controller.control(t, robots.state())
-        odom = robots.propagate_dynamics(u, dt)
-
-        if t % KF_frequency_s == 0 and t > 0:
-            # Declare a new keyframe
-            edges, KF = robots.reset()
-            odometry.append(edges)
-            keyframes.append((KF, '0_'+str(robots.keyframe_id()).zfill(3)))
-
-            g_odom = np.zeros((3, num_trajectories))
-            for i in range(num_trajectories):
-                g_odom[:, i] = concatenate_transform(global_state[-1][:, i], edges[:,i])
-            global_state.append(g_odom)
-
-    global_state = np.array(global_state)
-    truth = np.array(truth)
-
-    # re-arrange these arrays to make things convenient
-    odometry = np.array(odometry)
-    odometry = np.transpose(odometry, (2, 1, 0))
-    global_state = np.transpose(global_state, (2, 1, 0))
-
-    plt.figure(1)
-    for i in range(num_trajectories):
-        plt.plot(global_state[:,1,i], global_state[:,0, i], alpha=0.25)
-    plt.plot(truth[:, 1], truth[:, 0], label="truth",  linewidth=2.0)
-    plt.legend()
-    plt.show()
-
-
-    f = open(filename, 'w')
-    data = dict()
-    data['keyframes'] = keyframes
-    data['odometry'] = odometry
-    data['global_state'] = global_state
-    data['truth'] = truth
-    data['Q'] = Q
-
-    # Load Keyframes into the keyframe matcher and find loop closures
-    kf_matcher = KeyframeMatcher()
-    for keyframe in keyframes:
-        kf_matcher.add_keyframe(*keyframe)
-    loop_closures = kf_matcher.find_loop_closures()
-    data['loop_closures'] = loop_closures
-
-    pickle.dump(data, f)
-
-
 def run(filename):
     f = open(filename, 'rb')
     data = pickle.load(f)
@@ -205,8 +134,8 @@ def run(filename):
         # Optimize with both optimizers
         results_dict['edges'].append(edges[i])
         results_dict['nodes'].append(nodes[i])
-        GPO_optimized, GPO_iters = GPO_opt(edges[i], nodes[i], '0_000', 10000, 1e-6)
-        REO_optimized, REO_iters = REO_opt(edges[i], nodes[i], '0_000', 10000, 1e-6)
+        GPO_optimized, GPO_iters = GPO_opt(edges[i], nodes[i], '0_000', 100, 1e-8)
+        REO_optimized, REO_iters = REO_opt(edges[i], nodes[i], '0_000', 100, 1e-8)
         results_dict['GPO_opt'].append(GPO_optimized)
         results_dict['REO_opt'].append(REO_optimized)
         results_dict['truth'].append(truth)
