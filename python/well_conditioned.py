@@ -3,19 +3,19 @@ from keyframe_matcher_sim import KeyframeMatcher
 from MC_robot import *
 from controller import *
 import numpy as np
-import cPickle as pickle
+import pickle
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from REO import invert_transform, concatenate_transform, invert_edges, get_global_pose, REO_opt
 from GPO import GPO_opt
-from combined import combined_opt
+# from combined import combined_opt
 
 def norm(v, axis=None):
     return np.sqrt(np.sum(v*v, axis=axis))
 
 
 def generate_house(filename, angle_offset = 0, num_robots = 1000):
-    print "generating", num_robots, "house trajectories and saving to", filename
+    print( "generating", num_robots, "house trajectories and saving to", filename)
     perfect_edges = np.array([[1., 1., 1., 1., 2 ** 0.5, 2 ** 0.5 / 2.0, 2 ** 0.5 / 2.0, 2 ** 0.5],
                               [0., 0., 0., 0., 0, 0, 0, 0],
                               [np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 3.0 * np.pi / 4.0, np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 0]])
@@ -147,7 +147,7 @@ def run(filename):
         diff_error = np.sum(norm(REO_optimized[0:2, :] - GPO_optimized[0:2, :], axis=0))
         GPO_error = np.sum(norm(GPO_optimized[0:2, :] - truth[0:2, :], axis=0))\
 
-        # print "REO:", REO_error, "GPO:", GPO_error
+        # print( "REO:", REO_error, "GPO:", GPO_error)
 
         results_dict['REO_errors'].append(REO_error)
         results_dict['GPO_errors'].append(GPO_error)
@@ -161,12 +161,12 @@ def run(filename):
             results_dict['num_GPO_correct'] += 1
 
         if False: #comb_error > 1:
-            print "REO error = ", REO_error
-            print "GPO_error = ", GPO_error
-            print "diff = ", diff_error
-            print "REO_iters = ", REO_iters
-            print "GPO_iters = ", GPO_iters
-            print "initial_error = ", initial_error
+            print( "REO error = ", REO_error)
+            print( "GPO_error = ", GPO_error)
+            print( "diff = ", diff_error)
+            print( "REO_iters = ", REO_iters)
+            print( "GPO_iters = ", GPO_iters)
+            print( "initial_error = ", initial_error)
 
             plt.figure(1)
             plt.clf()
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     os.chdir("tests/well_conditioned")
 
     generate_house("data.pkl", 0, 100)
-    print "running optimization"
+    print( "running optimization")
     results = run("data.pkl")
 
     results['avg_REO_error'] = sum(results['REO_errors']) / float(results['num_robots'])
@@ -211,7 +211,7 @@ if __name__ == '__main__':
 
 
     # Plot all the trajectories
-    print "plotting trajectories"
+    print( "plotting trajectories")
 
     plt.figure(2, figsize=(12,9))
     plt.set_cmap('Set1')
@@ -242,7 +242,7 @@ if __name__ == '__main__':
     # GPO_errors = []
     # comb_errors = []
     # for angle in tqdm(np.arange(0., 360., 0.5)):
-    #     # print angle
+    #     # print( angle)
     #     generate_house(0., 1000)
     #     results = run()
     #     REO_errors.append(results['REO_errors'])
@@ -267,21 +267,3 @@ if __name__ == '__main__':
     # plt.legend()
     # plt.xlabel("angle offset (deg)")
     # plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

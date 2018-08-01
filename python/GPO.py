@@ -1,5 +1,5 @@
 import numpy as np
-from backend_optimizer import backend_optimizer
+import backend_optimizer
 
 def GPO_opt(edges, nodes, origin_node, num_iters, tol):
     GPO = backend_optimizer.Optimizer()

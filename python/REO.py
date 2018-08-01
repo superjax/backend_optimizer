@@ -164,7 +164,7 @@ class REO():
             z_star = z_star.reshape(z_hat.shape, order='F')
 
             z_hat += z_star
-            # print iter, ":", diff
+            # print( iter, ":", diff)
 
             iter += 1
 
@@ -180,7 +180,7 @@ class REO():
             else:
                 p = concatenate_transform(p, invert_transform(edge))
 
-            # print p
+            # print( p)
 
             # wrap angle to +/- pi
             if p[2] > np.pi:
@@ -327,7 +327,7 @@ if __name__ == '__main__':
 
         edges, diff = optimizer.optimize(zbar, dirs, Omegas, lc, lc_omega, lc_dir, cycles, 1, 0.00001, edges, SGD=False)
         iter += 1
-        print "error = ", diff, "iters =", iter
+        print( "error = ", diff, "iters =", iter)
     plt.show()
 
 def REO_opt(edges, nodes, origin_node, num_iters, tol):
@@ -349,7 +349,7 @@ def REO_opt(edges, nodes, origin_node, num_iters, tol):
         # Consecutive nodes
         if abs(to_id - from_id) == 1:
             odom.append(map(float, [edge[2], edge[3], edge[4]]))
-            Omegas.append(np.diag(map(float, [edge[5], edge[6], edge[7]])))
+            Omegas.append(np.diag(np.array([edge[5], edge[6], edge[7]])))
             if to_id == from_id + 1: # forwards
                 dirs.append(1)
             elif to_id == from_id - 1: # backwards
