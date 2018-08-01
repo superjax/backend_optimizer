@@ -2,7 +2,6 @@
 #define BACKEND_OPTIMIZER_H
 
 #include <pybind11/pybind11.h>
-#include <ros/ros.h>
 
 // GTSAM includes
 #include <gtsam/geometry/Pose2.h>

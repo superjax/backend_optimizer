@@ -12,12 +12,12 @@ if __name__ == "__main__":
     os.chdir("plots")
     os.mkdir(str(stamp))
     os.chdir(str(stamp))
-    dt = 0.1
+    dt = 0.1    
     time = np.arange(0, 300.01, dt)
 
     robots = []
     controllers = []
-    num_robots = 12
+    num_robots = 2
     KF_frequency_s = 0.5
     plot_frequency_s = 10
 

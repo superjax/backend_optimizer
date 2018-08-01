@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from backend_optimizer import backend_optimizer
+import backend_optimizer
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib
@@ -141,7 +141,7 @@ class Backend():
             # self.optimization_time_array.append([id, len(self.graphs), len(graph['graph'].nodes()), graph['optimizer'].optimize()])
 
         except:
-            print "something went wrong - error 2"
+            print("something went wrong - error 2")
         optimized_values = graph['optimizer'].get_optimized()
         for node in optimized_values["nodes"]:
             node_id = node[0]
@@ -157,14 +157,14 @@ class Backend():
         # Figure out which graphs these agents come from
         from_graph_id = -1
         to_graph_id = -1
-        for id, graph in self.graphs.iteritems():
+        for id, graph in self.graphs.items():
             if from_vehicle_id in graph['connected_agents']:
                 from_graph_id = id
             if to_vehicle_id in graph['connected_agents']:
                 to_graph_id = id
 
         if from_graph_id < 0 or to_graph_id < 0:
-            print "error code 3"
+            print("error code 3")
 
         # If these are the same graph, then just add a loop closure
         if to_graph_id == from_graph_id:
@@ -198,7 +198,7 @@ class Backend():
             self.graphs_mutex.acquire()
             del self.graphs[graph2]
             self.graphs_mutex.release()
-            print "deleting graph ", graph2
+            print("deleting graph %d" % graph2)
 
 
     # this function merges graph1 into graph2
@@ -251,15 +251,15 @@ class Backend():
 
         # Add the new edges to the optimizer
         for edge in new_edge_graph.edges():
-            edge_map = graph2['graph'].edge[edge[0]][edge[1]]
-            graph1['graph'].edge[edge[0]][edge[1]] = edge_map
+            edge_map = graph2['graph'].edges[edge[0],edge[1]]
+            graph1['graph'].add_edge(edge[0],edge[1], **edge_map)
             try:
                 graph1['edge_buffer'].append([edge_map['from_id'], edge_map['to_id'], edge_map['transform'][0],
                                      edge_map['transform'][1], edge_map['transform'][2],
                                      edge_map['covariance'][0][0], edge_map['covariance'][1][1],
                                      edge_map['covariance'][2][2]])
             except:
-                print "error 5"
+                print("error 5")
 
 
     def concatenate_transform(self, T1, T2):
@@ -307,7 +307,7 @@ class Backend():
         # Create combined graph for plotting
         combined_graph = nx.Graph()
         self.graphs_mutex.acquire()
-        for id, graph in self.graphs.iteritems():
+        for id, graph in self.graphs.items():
             combined_graph = nx.compose(combined_graph, graph['graph'])
         self.graphs_mutex.release()
 
@@ -364,7 +364,7 @@ class Backend():
             i = 0
             while i  < len(path_data[agent]) - 2:
                 # If there is no edge between these nodes
-                if path_data[agent][i][2] not in graph.edge.keys() or path_data[agent][i+1][2] not in graph.edge[path_data[agent][i][2]].keys():
+                if path_data[agent][i][2] not in graph.edges() or path_data[agent][i+1][2] not in graph.edge[path_data[agent][i][2]].keys():
                     # Insert a Nan to tell matplotlib not to plot a line between these two points
                     path_data[agent].insert(i+1, [np.nan, np.nan, 'none'])
                     i += 1

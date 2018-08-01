@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-
-from backend_optimizer import kdtree
+import kdtree
 import numpy as np
 from math import *
 

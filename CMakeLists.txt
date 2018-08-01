@@ -1,30 +1,16 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(backend_optimizer)
 
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
-  cmake_modules
-)
-find_package(Eigen REQUIRED)
+find_package(Eigen3 REQUIRED)
 
-SET( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=gnu++11 ${OpenMP_CXX_FLAGS} -O2 -mfma -mavx")
+set( CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=gnu++11 ${OpenMP_CXX_FLAGS} -O2 -mfma -mavx")
 
 find_package(GTSAM)
 find_package(pybind11)
 
-catkin_package(
-    INCLUDE_DIRS include
-    LIBRARIES backend_optimizer
-    CATKIN_DEPENDS roscpp
-)
-
-###########
-## Build ##
-###########
 include_directories(
         include
-        ${catkin_INCLUDE_DIRS}
+        ${EIGEN_INCLUDE_DIR}
         ${GTSAM_INCLUDE_DIR}
 )
 ## Declare a pybind module this is a fancy wrapper for add_library
@@ -42,18 +28,16 @@ pybind11_add_module(kdtree
 ## Specify libraries to link a library or executable target against
 target_link_libraries(backend_optimizer gtsam)
 
-
-# Don't prepend wrapper library name with lib and add to Python libs.
 set_target_properties(backend_optimizer PROPERTIES
-        PREFIX ""
-        LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}
+    PREFIX ""
+    OUTPUT_NAME "backend_optimizer"
+    SUFFIX ".so"
+    LIBRARY_OUTPUT_DIRECTORY ../python
 )
 
 set_target_properties(kdtree PROPERTIES
-        PREFIX ""
-        LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}
+    PREFIX ""
+    OUTPUT_NAME "kdtree"
+    SUFFIX ".so"
+    LIBRARY_OUTPUT_DIRECTORY ../python
 )
-
-
-# Put an __init__.py file in the package location so it can be imported
-file(WRITE ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION}/__init__.py "")
