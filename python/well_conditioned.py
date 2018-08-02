@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from REO import invert_transform, concatenate_transform, invert_edges, get_global_pose, REO_opt
 from GPO import GPO_opt
+import os, subprocess
 # from combined import combined_opt
 
 def norm(v, axis=None):
@@ -181,6 +182,9 @@ def run(filename):
     return results_dict
 
 if __name__ == '__main__':
+    subprocess.Popen(['mkdir', '-p', 'tests/well_conditioned/plots'])
+
+    cwd = os.getcwd()
     os.chdir("tests/well_conditioned")
 
     generate_house("data.pkl", 0, 100)
@@ -207,7 +211,7 @@ if __name__ == '__main__':
     plt.subplot(1,2,2)
     plt.hist(results['diff_errors'], label="REO-GPO", color='b', alpha=0.5, bins=25)
     plt.legend()
-    plt.savefig("plots/hist" + str(results['num_robots']) + ".svg")
+    plt.savefig("plots/hist" + str(results['num_robots']) + ".png")
 
 
     # Plot all the trajectories

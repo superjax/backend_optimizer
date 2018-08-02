@@ -348,7 +348,7 @@ def REO_opt(edges, nodes, origin_node, num_iters, tol):
         to_id = int(edge[1].split("_")[1])
         # Consecutive nodes
         if abs(to_id - from_id) == 1:
-            odom.append(map(float, [edge[2], edge[3], edge[4]]))
+            odom.append([edge[2], edge[3], edge[4]])
             Omegas.append(np.diag(np.array([edge[5], edge[6], edge[7]])))
             if to_id == from_id + 1: # forwards
                 dirs.append(1)
@@ -357,8 +357,11 @@ def REO_opt(edges, nodes, origin_node, num_iters, tol):
 
         # Loop closure
         else:
-            lc.append([map(float, [edge[2], edge[3], edge[4]])])
-            lc_omegas.append(np.diag(map(float, [edge[5], edge[6], edge[7]])))
+            lc.append([edge[2], edge[3], edge[4]])
+            try:
+                lc_omegas.append(np.diag([edge[5], edge[6], edge[7]]))
+            except:
+                debug = 1
             if to_id > from_id: # forwards
                 lc_dirs.append(1)
                 cycles.append([i + from_id for i in range(to_id - from_id)])
