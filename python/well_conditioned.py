@@ -7,7 +7,7 @@ import pickle
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from REO import invert_transform, concatenate_transform, invert_edges, get_global_pose, REO_opt
-from GPO import GPO_opt
+from GPO import GPO
 import os, subprocess
 # from combined import combined_opt
 
@@ -25,7 +25,7 @@ def generate_house(filename, angle_offset = 0, num_robots = 1000):
 
     dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    Omegas = [np.diag([1e2, 1e2, 1e4]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([1e5, 1e5, 1e1]) for i in range(perfect_edges.shape[1])]
 
     odometry = np.zeros((num_robots, 3, perfect_edges.shape[1]))
     global_estimate = np.zeros((num_robots, 3, perfect_edges.shape[1]+1))
@@ -47,10 +47,10 @@ def generate_house(filename, angle_offset = 0, num_robots = 1000):
         for j in range(cycle[0], cycle[1]):
             lc[:,i] = concatenate_transform(lc[:,i], perfect_edges[:,j])
 
-    lc_omega = [np.diag([1e7, 1e7, 1e7]) for i in range(lc.shape[1])]
+    lc_omega = [np.diag([1e5, 1e5, 1e1]) for i in range(lc.shape[1])]
 
     # Turn off some loop closures
-    active_lc = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    active_lc = [0, 1, 4, 5, 7, 8]
     lc = lc[:, active_lc]
     lc_omega = [lc_omega[i] for i in active_lc]
     cycles = [cycles[i] for i in active_lc]
@@ -131,11 +131,13 @@ def run(filename):
     results_dict['GPO_opt'] = []
     results_dict['truth'] = []
 
+    gpo = GPO()
+
     for i in tqdm(range(num_robots)):
         # Optimize with both optimizers
         results_dict['edges'].append(edges[i])
         results_dict['nodes'].append(nodes[i])
-        GPO_optimized, GPO_iters = GPO_opt(edges[i], nodes[i], '0_000', 100, 1e-8)
+        GPO_optimized, GPO_iters = gpo.opt(edges[i], nodes[i], '0_000', 100, 1e-8)
         REO_optimized, REO_iters = REO_opt(edges[i], nodes[i], '0_000', 100, 1e-8)
         results_dict['GPO_opt'].append(GPO_optimized)
         results_dict['REO_opt'].append(REO_optimized)
@@ -161,23 +163,23 @@ def run(filename):
         if GPO_error < 0.01:
             results_dict['num_GPO_correct'] += 1
 
-        if False: #comb_error > 1:
-            print( "REO error = ", REO_error)
-            print( "GPO_error = ", GPO_error)
-            print( "diff = ", diff_error)
-            print( "REO_iters = ", REO_iters)
-            print( "GPO_iters = ", GPO_iters)
-            print( "initial_error = ", initial_error)
-
-            plt.figure(1)
-            plt.clf()
-            plt.plot(GPO_optimized[1, :], GPO_optimized[0, :], label='GPO')
-            plt.plot(REO_optimized[1, :], REO_optimized[0, :], label='REO')
-            # plt.plot(comb_optimized[1, :], comb_optimized[0, :], label='comb')
-            plt.plot(global_state[i, 1, :], global_state[i, 0, :], label='init')
-            plt.plot(truth[1, :], truth[0, :], label="truth")
-            plt.legend()
-            plt.show()
+        # if False: #comb_error > 1:
+        #     print( "REO error = ", REO_error)
+        #     print( "GPO_error = ", GPO_error)
+        #     print( "diff = ", diff_error)
+        #     print( "REO_iters = ", REO_iters)
+        #     print( "GPO_iters = ", GPO_iters)
+        #     print( "initial_error = ", initial_error)
+        #
+        #     plt.figure(1)
+        #     plt.clf()
+        #     plt.plot(GPO_optimized[1, :], GPO_optimized[0, :], label='GPO')
+        #     plt.plot(REO_optimized[1, :], REO_optimized[0, :], label='REO')
+        #     # plt.plot(comb_optimized[1, :], comb_optimized[0, :], label='comb')
+        #     plt.plot(global_state[i, 1, :], global_state[i, 0, :], label='init')
+        #     plt.plot(truth[1, :], truth[0, :], label="truth")
+        #     plt.legend()
+        #     plt.show()
 
     return results_dict
 
@@ -199,9 +201,9 @@ if __name__ == '__main__':
     results['max_GPO_error'] = max(results['GPO_errors'])
 
 
+    # Plot Error Histogram
     plt.figure(1, figsize=(12,8))
     plt.set_cmap('Set2')
-
     plt.subplot(2,2,1)
     plt.hist(results['REO_errors'], label="REO", color='r', alpha=0.5, bins=25)
     plt.legend()
@@ -211,31 +213,38 @@ if __name__ == '__main__':
     plt.subplot(1,2,2)
     plt.hist(results['diff_errors'], label="REO-GPO", color='b', alpha=0.5, bins=25)
     plt.legend()
-    plt.savefig("plots/hist" + str(results['num_robots']) + ".png")
+    plt.savefig("plots/error_hist" + str(results['num_robots']) + ".png")
 
+    # Plot Iterations Histogram
+    plt.figure(1, figsize=(12,8))
+    plt.set_cmap('Set2')
+    plt.subplot(2,1,1)
+    plt.hist(results['REO_iters'], label="REO", color='r', alpha=0.5, bins=25)
+    plt.legend()
+    plt.subplot(2,1,2)
+    plt.hist(results['GPO_iters'], label="GPO", color='g', alpha=0.5, bins=25)
+    plt.legend()
+    plt.savefig("plots/iter_hist" + str(results['num_robots']) + ".png")
 
     # Plot all the trajectories
     print( "plotting trajectories")
-
     plt.figure(2, figsize=(12,9))
     plt.set_cmap('Set1')
+    for j, (REO, GPO, nodes, truth) in tqdm(enumerate(zip(results['REO_opt'], results['GPO_opt'], results['nodes'], results['truth'])), total=results['num_robots']):
+        initial_pos = np.array([[nodes[i][1], nodes[i][2]] for i in range(len(nodes))])
+        plt.clf()
+        ax=plt.subplot(111)
 
-    if True:
-        for j, (REO, GPO, nodes, truth) in tqdm(enumerate(zip(results['REO_opt'], results['GPO_opt'], results['nodes'], results['truth'])), total=results['num_robots']):
-            initial_pos = np.array([[nodes[i][1], nodes[i][2]] for i in range(len(nodes))])
-            plt.clf()
-            ax=plt.subplot(111)
-
-            plt.plot(initial_pos[:,0], initial_pos[:,1], label='initial', linewidth=3, dashes=[10, 5], alpha = 0.5, color='g')
-            plt.plot(truth[0,:], truth[1,:], label="truth", linewidth=3, dashes=[3, 3], alpha=0.5, color='m')
-            plt.plot(REO[0,:], REO[1,:], label='REO', linewidth=2,  alpha=0.5, dashes=[4,2], color='b')
-            plt.plot(GPO[0, :], GPO[1, :], label='GPO', linewidth=2, alpha=0.5, color='r')
-            box = ax.get_position()
-            ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
-            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=4)
-            plt.savefig("plots/traj" + str(j).zfill(3) + ".svg")
-            if j > 100:
-                break
+        plt.plot(initial_pos[:,0], initial_pos[:,1], label='initial', linewidth=3, dashes=[10, 5], alpha = 0.5, color='g')
+        plt.plot(truth[0,:], truth[1,:], label="truth", linewidth=3, dashes=[3, 3], alpha=0.5, color='m')
+        plt.plot(REO[0,:], REO[1,:], label='REO', linewidth=2,  alpha=0.5, dashes=[4,2], color='b')
+        plt.plot(GPO[0, :], GPO[1, :], label='GPO', linewidth=2, alpha=0.5, color='r')
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=4)
+        plt.savefig("plots/traj" + str(j).zfill(3) + ".svg")
+        if j > 100:
+            break
 
 
 

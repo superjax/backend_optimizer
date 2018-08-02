@@ -216,14 +216,14 @@ py::dict BackendOptimizer::batch_optimize(pybind11::list nodes, pybind11::list e
 {
   //  std::cout << "adding ";
   NonlinearFactorGraph new_graph;
-  Values new_initial_estimates;
+  Values prev_estimates;
 
   // convert the nodes
-  //  std::cout << "adding nodes \n";
+//  std::cout << "adding nodes \n";
   std::vector<py::list> stl_nodes = nodes.cast<std::vector<py::list>>();
   std::map<std::string, uint64_t> node_name_to_id_map;
   std::map<uint64_t, std::string> node_id_to_name_map;
-  //  std::cout << stl_nodes.size() << " odometry edges ";
+//  std::cout << stl_nodes.size() << " odometry edges ";
   for (int i = 0; i < stl_nodes.size(); i++)
   {
     std::string id = stl_nodes[i][0].cast<std::string>();
@@ -236,7 +236,7 @@ py::dict BackendOptimizer::batch_optimize(pybind11::list nodes, pybind11::list e
     node_name_to_id_map[id] = i;
     node_id_to_name_map[i] = id;
 
-    new_initial_estimates.insert(i, Pose2(x, y,  z));
+    prev_estimates.insert(i, Pose2(x, y, z));
   }
 
   // extract edges
@@ -250,11 +250,11 @@ py::dict BackendOptimizer::batch_optimize(pybind11::list nodes, pybind11::list e
     double x = stl_edges[i][2].cast<double>();
     double y = stl_edges[i][3].cast<double>();
     double z = stl_edges[i][4].cast<double>();
-    double P11 = stl_edges[i][5].cast<double>();
-    double P22 = stl_edges[i][6].cast<double>();
-    double P33 = stl_edges[i][7].cast<double>();
+    double P11 = 1.0/stl_edges[i][5].cast<double>();
+    double P22 = 1.0/stl_edges[i][6].cast<double>();
+    double P33 = 1.0/stl_edges[i][7].cast<double>();
 
-    // save off edge constraints so we can quickly load it if we want to add edges later
+    // save off edge constraints so we can quickly load them later
     std::vector<std::string> edge_vec = {from, to};
     edge_list.push_back(edge_vec);
     std::vector<double> edge_constraint = {x, y, z, P11, P22, P33};
@@ -271,17 +271,33 @@ py::dict BackendOptimizer::batch_optimize(pybind11::list nodes, pybind11::list e
   new_graph.emplace_shared<PriorFactor<Pose2> >(fixed_node_index, Pose2(0, 0, 0), priorNoise);
 
   // Optimize the Graph
-  LevenbergMarquardtOptimizer optimizer(new_graph, new_initial_estimates);
+//  new_graph.print();
+  LevenbergMarquardtOptimizer optimizer(new_graph, prev_estimates);
+  optimizer.optimize();
+//  std::cout << "iter: " << optimizer.iterations() << " error = " << optimizer.error();
   int iter = 0;
   double error = 1e25;
   while (iter < max_iterations && error > epsilon)
   {
+    double squared_error_sum = 0;
     optimizer.iterate();
     iter++;
-    error = optimizer.error();
+    Values current_values = optimizer.values();
+    for (int i = 0; i < prev_estimates.size(); i++)
+    {
+      Pose2 cur = current_values.at<Pose2>(i);
+      Pose2 prev = prev_estimates.at<Pose2>(i);
+      squared_error_sum += pow(cur.x() - prev.x(), 2);
+      squared_error_sum += pow(cur.y() - prev.y(), 2);
+      squared_error_sum += pow(cur.theta() - prev.theta(), 2);
+    }
+    error = sqrt(squared_error_sum);
+    std::swap(current_values, prev_estimates);
+//    std::cout << "iter: " << iter << " error: " << error << std::endl;
   }
 
   Values optimized_values = optimizer.values();
+//  optimized_values.print();
 
   py::dict out_dict;
   py::list node_list;
