@@ -25,32 +25,28 @@ def generate_house(filename, angle_offset = 0, num_robots = 1000):
 
     dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    Omegas = [np.diag([1e5, 1e5, 1e1]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([1e5, 1e5, 2e1]) for i in range(perfect_edges.shape[1])]
 
     odometry = np.zeros((num_robots, 3, perfect_edges.shape[1]))
     global_estimate = np.zeros((num_robots, 3, perfect_edges.shape[1]+1))
     truth = get_global_pose(perfect_edges, x0.copy())
     # invert_edges(perfect_edges, dirs, [5, 7, 2])
 
-    cycles = [[0, 8],
-              [0, 5],
-              [0, 6],
-              [0, 3],
-              [0, 7],
-              [3, 5],
-              [2, 6],
-              [4, 8],
-              [1, 7]]
+    cycles = [[0, 4],
+              [2, 5],
+              [1, 7],
+              [3, 8],
+              [0, 6]]
 
     lc = np.zeros([3, len(cycles)])
     for i, cycle in enumerate(cycles):
         for j in range(cycle[0], cycle[1]):
             lc[:,i] = concatenate_transform(lc[:,i], perfect_edges[:,j])
 
-    lc_omega = [np.diag([1e5, 1e5, 1e1]) for i in range(lc.shape[1])]
+    lc_omega = [np.diag([1e5, 1e5, 2e1]) for i in range(lc.shape[1])]
 
     # Turn off some loop closures
-    active_lc = [0, 1, 4, 5, 7, 8]
+    active_lc = [0, 1, 2, 3, 4]
     lc = lc[:, active_lc]
     lc_omega = [lc_omega[i] for i in active_lc]
     cycles = [cycles[i] for i in active_lc]
@@ -137,8 +133,8 @@ def run(filename):
         # Optimize with both optimizers
         results_dict['edges'].append(edges[i])
         results_dict['nodes'].append(nodes[i])
-        GPO_optimized, GPO_iters = gpo.opt(edges[i], nodes[i], '0_000', 100, 1e-8)
-        REO_optimized, REO_iters = REO_opt(edges[i], nodes[i], '0_000', 100, 1e-8)
+        GPO_optimized, GPO_iters = gpo.opt(edges[i], nodes[i], '0_000', 25, 1e-8)
+        REO_optimized, REO_iters = REO_opt(edges[i], nodes[i], '0_000', 25, 1e-8)
         results_dict['GPO_opt'].append(GPO_optimized)
         results_dict['REO_opt'].append(REO_optimized)
         results_dict['truth'].append(truth)
@@ -202,16 +198,17 @@ if __name__ == '__main__':
 
 
     # Plot Error Histogram
+    hist_options = {"edgecolor":'black', "linewidth":0.5}
     plt.figure(1, figsize=(12,8))
     plt.set_cmap('Set2')
     plt.subplot(2,2,1)
-    plt.hist(results['REO_errors'], label="REO", color='r', alpha=0.5, bins=25)
+    plt.hist(results['REO_errors'], label="REO", **hist_options)
     plt.legend()
     plt.subplot(2,2,3)
-    plt.hist(results['GPO_errors'], label="GPO", color='g', alpha=0.5, bins=25)
+    plt.hist(results['GPO_errors'], label="GPO", **hist_options)
     plt.legend()
     plt.subplot(1,2,2)
-    plt.hist(results['diff_errors'], label="REO-GPO", color='b', alpha=0.5, bins=25)
+    plt.hist(results['diff_errors'], label="REO-GPO", **hist_options)
     plt.legend()
     plt.savefig("plots/error_hist" + str(results['num_robots']) + ".png")
 
@@ -219,10 +216,10 @@ if __name__ == '__main__':
     plt.figure(1, figsize=(12,8))
     plt.set_cmap('Set2')
     plt.subplot(2,1,1)
-    plt.hist(results['REO_iters'], label="REO", color='r', alpha=0.5, bins=25)
+    plt.hist(results['REO_iters'], label="REO", **hist_options)
     plt.legend()
     plt.subplot(2,1,2)
-    plt.hist(results['GPO_iters'], label="GPO", color='g', alpha=0.5, bins=25)
+    plt.hist(results['GPO_iters'], label="GPO", **hist_options)
     plt.legend()
     plt.savefig("plots/iter_hist" + str(results['num_robots']) + ".png")
 
@@ -236,7 +233,7 @@ if __name__ == '__main__':
         ax=plt.subplot(111)
 
         plt.plot(initial_pos[:,0], initial_pos[:,1], label='initial', linewidth=3, dashes=[10, 5], alpha = 0.5, color='g')
-        plt.plot(truth[0,:], truth[1,:], label="truth", linewidth=3, dashes=[3, 3], alpha=0.5, color='m')
+        plt.plot(truth[0,:], truth[1,:], label="truth", linewidth=4, dashes=[3, 3], alpha=0.5, color='m')
         plt.plot(REO[0,:], REO[1,:], label='REO', linewidth=2,  alpha=0.5, dashes=[4,2], color='b')
         plt.plot(GPO[0, :], GPO[1, :], label='GPO', linewidth=2, alpha=0.5, color='r')
         box = ax.get_position()

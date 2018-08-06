@@ -16,3 +16,10 @@
 *.idea/*
 *.swp
 *.out
+python/.idea/*
+*.so
+python/tests/*
+python/plots/*
+build/*
+*.user
+

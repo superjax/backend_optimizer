@@ -164,7 +164,7 @@ class REO():
             z_star = z_star.reshape(z_hat.shape, order='F')
 
             z_hat += z_star
-            # print( iter, ":", diff)
+            print( "REO iter: ", iter, ":", diff)
 
             iter += 1
 

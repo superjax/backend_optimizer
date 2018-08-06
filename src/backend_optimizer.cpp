@@ -293,7 +293,7 @@ py::dict BackendOptimizer::batch_optimize(pybind11::list nodes, pybind11::list e
     }
     error = sqrt(squared_error_sum);
     std::swap(current_values, prev_estimates);
-//    std::cout << "iter: " << iter << " error: " << error << std::endl;
+    std::cout << "iter: " << iter << " error: " << error << std::endl;
   }
 
   Values optimized_values = optimizer.values();
