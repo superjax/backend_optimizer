@@ -10,6 +10,7 @@ from REO import invert_transform, concatenate_transform, invert_edges, get_globa
 from GPO import GPO
 import os, subprocess
 # from combined import combined_opt
+import shutil
 
 def norm(v, axis=None):
     return np.sqrt(np.sum(v*v, axis=axis))
@@ -101,9 +102,11 @@ def generate_house(filename, angle_offset = 0, num_robots = 1000):
 
 def run(filename):
     f = open(filename, 'rb')
-    data = pickle.load(f)
+    data = pickle.load(f, encoding='latin1')
     edges = data['edges']
     nodes = data['nodes']
+    print(type(edges))
+    print('Hey')
     global_state = data['global_state']
     truth = np.array(data['truth'])
 
@@ -128,6 +131,9 @@ def run(filename):
     results_dict['truth'] = []
 
     gpo = GPO()
+
+    print(type(edges[0]))
+    print(type(nodes[0]))
 
     for i in tqdm(range(num_robots)):
         # Optimize with both optimizers
