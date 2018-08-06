@@ -164,7 +164,7 @@ class REO():
             z_star = z_star.reshape(z_hat.shape, order='F')
 
             z_hat += z_star
-            print( "REO iter: ", iter, ":", diff)
+            # print( "REO iter: ", iter, ":", diff)
 
             iter += 1
 
@@ -327,7 +327,7 @@ if __name__ == '__main__':
 
         edges, diff = optimizer.optimize(zbar, dirs, Omegas, lc, lc_omega, lc_dir, cycles, 1, 0.00001, edges, SGD=False)
         iter += 1
-        print( "error = ", diff, "iters =", iter)
+        # print( "error = ", diff, "iters =", iter)
     plt.show()
 
 def REO_opt(edges, nodes, origin_node, num_iters, tol):

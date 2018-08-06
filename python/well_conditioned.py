@@ -185,7 +185,7 @@ if __name__ == '__main__':
     cwd = os.getcwd()
     os.chdir("tests/well_conditioned")
 
-    generate_house("data.pkl", 0, 100)
+    generate_house("data.pkl", 0, 1000)
     print( "running optimization")
     results = run("data.pkl")
 
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     plt.subplot(1,2,2)
     plt.hist(results['diff_errors'], label="REO-GPO", **hist_options)
     plt.legend()
-    plt.savefig("plots/error_hist" + str(results['num_robots']) + ".png")
+    plt.savefig("plots/error_hist" + str(results['num_robots']) + ".png", bbox_inches='tight', pad_inches=0)
 
     # Plot Iterations Histogram
     plt.figure(1, figsize=(12,8))
@@ -221,7 +221,7 @@ if __name__ == '__main__':
     plt.subplot(2,1,2)
     plt.hist(results['GPO_iters'], label="GPO", **hist_options)
     plt.legend()
-    plt.savefig("plots/iter_hist" + str(results['num_robots']) + ".png")
+    plt.savefig("plots/iter_hist" + str(results['num_robots']) + ".png", bbox_inches='tight', pad_inches=0)
 
     # Plot all the trajectories
     print( "plotting trajectories")
@@ -239,7 +239,7 @@ if __name__ == '__main__':
         box = ax.get_position()
         ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=4)
-        plt.savefig("plots/traj" + str(j).zfill(3) + ".svg")
+        plt.savefig("plots/traj" + str(j).zfill(3) + ".svg", bbox_inches='tight', pad_inches=0)
         if j > 100:
             break
 

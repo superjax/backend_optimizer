@@ -17,50 +17,39 @@ def norm(v, axis=None):
 
 def generate_house(filename, angle_offset = 0, num_robots = 1000):
     print( "generating", num_robots, "house trajectories and saving to", filename)
-    perfect_edges = np.array([[0, 1., 1., 1., 1., 2 ** 0.5, 2 ** 0.5 / 2.0, 2 ** 0.5 / 2.0, 2 ** 0.5],
-                              [0, 0., 0., 0., 0., 0, 0, 0, 0],
-                              [1.5*np.pi/3.0, np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 3.0 * np.pi / 4.0, np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 0]])
+    perfect_edges = np.array([[1., 1., 1., 1., 2 ** 0.5, 2 ** 0.5 / 2.0, 2 ** 0.5 / 2.0, 2 ** 0.5],
+                              [0., 0., 0., 0., 0, 0, 0, 0],
+                              [np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 3.0 * np.pi / 4.0, np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 0]])
 
     x0 = np.array([0, 0, 0])
 
-    dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1])
+    dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    Omegas = [np.diag([1e5, 1e5, 1e2]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([1e3, 1e3, 1e1]) for i in range(perfect_edges.shape[1])]
 
     odometry = np.zeros((num_robots, 3, perfect_edges.shape[1]))
     global_estimate = np.zeros((num_robots, 3, perfect_edges.shape[1]+1))
     truth = get_global_pose(perfect_edges, x0.copy())
     # invert_edges(perfect_edges, dirs, [5, 7, 2])
 
-    cycles = [
-              # [1, 5],
-              # [3, 6],
-              # [2, 8],
-              # [4, 9],
-
-              [0, 5],
-              [0, 3],
-              [0, 6],
-              [0, 2],
-              [0, 8],
-              [0, 4],
-              [0, 9],
-              [0, 7],
-    ]
-
+    cycles = [[0, 4],
+              [2, 5],
+              [1, 7],
+              [3, 8],
+              [0, 6]]
 
     lc = np.zeros([3, len(cycles)])
     for i, cycle in enumerate(cycles):
         for j in range(cycle[0], cycle[1]):
             lc[:,i] = concatenate_transform(lc[:,i], perfect_edges[:,j])
 
-    lc_omega = [np.diag([1e5, 1e5, 1e2]) for i in range(lc.shape[1])]
+    lc_omega = [np.diag([1e3, 1e3, 1e1]) for i in range(lc.shape[1])]
 
     # Turn off some loop closures
-    # active_lc = [0, 1, 2, 3]
-    # lc = lc[:, active_lc]
-    # lc_omega = [lc_omega[i] for i in active_lc]
-    # cycles = [cycles[i] for i in active_lc]
+    active_lc = [0, 1, 2, 3, 4]
+    lc = lc[:, active_lc]
+    lc_omega = [lc_omega[i] for i in active_lc]
+    cycles = [cycles[i] for i in active_lc]
 
     edge_g2o_lists = []
     nodes_g2o_lists = []
@@ -73,7 +62,6 @@ def generate_house(filename, angle_offset = 0, num_robots = 1000):
         odometry[robot,:,:] = perfect_edges  + edge_noise
         odometry[robot, 2, odometry[robot, 2] > np.pi] -= 2.0 * np.pi # Angle wrapping
         odometry[robot, 2, odometry[robot, 2] < -np.pi] += 2.0 * np.pi
-        odometry[robot, :, 0] = np.zeros(3) # No initial heading guess
         global_estimate[robot,:,:] = get_global_pose(odometry[robot,:,:], x0.copy())
 
         # Pack into g2o-style list
@@ -194,10 +182,10 @@ def run(filename):
     return results_dict
 
 if __name__ == '__main__':
-    subprocess.Popen(['mkdir', '-p', 'tests/heading_error/plots'])
+    subprocess.Popen(['mkdir', '-p', 'tests/noisy_edges/plots'])
 
     cwd = os.getcwd()
-    os.chdir("tests/heading_error")
+    os.chdir("tests/noisy_edges")
 
     generate_house("data.pkl", 0, 1000)
     print( "running optimization")
