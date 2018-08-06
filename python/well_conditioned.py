@@ -25,7 +25,7 @@ def generate_house(filename, angle_offset = 0, num_robots = 1000):
 
     dirs = np.array([1, 1, 1, 1, 1, 1, 1, 1])
 
-    Omegas = [np.diag([1e5, 1e5, 2e1]) for i in range(perfect_edges.shape[1])]
+    Omegas = [np.diag([1e5, 1e5, 1e3]) for i in range(perfect_edges.shape[1])]
 
     odometry = np.zeros((num_robots, 3, perfect_edges.shape[1]))
     global_estimate = np.zeros((num_robots, 3, perfect_edges.shape[1]+1))
@@ -43,7 +43,7 @@ def generate_house(filename, angle_offset = 0, num_robots = 1000):
         for j in range(cycle[0], cycle[1]):
             lc[:,i] = concatenate_transform(lc[:,i], perfect_edges[:,j])
 
-    lc_omega = [np.diag([1e5, 1e5, 2e1]) for i in range(lc.shape[1])]
+    lc_omega = [np.diag([1e5, 1e5, 1e3]) for i in range(lc.shape[1])]
 
     # Turn off some loop closures
     active_lc = [0, 1, 2, 3, 4]
@@ -233,9 +233,9 @@ if __name__ == '__main__':
         ax=plt.subplot(111)
 
         plt.plot(initial_pos[:,0], initial_pos[:,1], label='initial', linewidth=3, dashes=[10, 5], alpha = 0.5, color='g')
-        plt.plot(truth[0,:], truth[1,:], label="truth", linewidth=4, dashes=[3, 3], alpha=0.5, color='m')
-        plt.plot(REO[0,:], REO[1,:], label='REO', linewidth=2,  alpha=0.5, dashes=[4,2], color='b')
-        plt.plot(GPO[0, :], GPO[1, :], label='GPO', linewidth=2, alpha=0.5, color='r')
+        plt.plot(truth[0,:], truth[1,:], label="truth", linewidth=1, alpha=1, color='k')
+        plt.plot(REO[0,:], REO[1,:], label='REO', linewidth=3,  alpha=0.8, dashes=[4,2], color='b')
+        plt.plot(GPO[0, :], GPO[1, :], label='GPO', linewidth=3, alpha=0.8, dashes=[2, 4], color='r')
         box = ax.get_position()
         ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=4)
