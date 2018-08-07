@@ -112,7 +112,8 @@ class REO():
 
         for i in range(len(lc_dirs)):
             if lc_dirs[i] < 0:
-                lcs[i] = self.invert_transform(lcs[i])
+                # lcs[i] = self.invert_transform(lcs[i])  # Why is this self?
+                lcs[:, i] = invert_transform(lcs[:, i])
 
         diff = sys.float_info.max
         iter = 0

@@ -105,8 +105,6 @@ def run(filename):
     data = pickle.load(f, encoding='latin1')
     edges = data['edges']
     nodes = data['nodes']
-    print(type(edges))
-    print('Hey')
     global_state = data['global_state']
     truth = np.array(data['truth'])
 
@@ -131,9 +129,6 @@ def run(filename):
     results_dict['truth'] = []
 
     gpo = GPO()
-
-    print(type(edges[0]))
-    print(type(nodes[0]))
 
     for i in tqdm(range(num_robots)):
         # Optimize with both optimizers
