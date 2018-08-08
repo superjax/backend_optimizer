@@ -54,6 +54,8 @@ def run(data):
     results_dict['REO_opt'] = REO_optimized
     results_dict['GPO_Time'] = dt_g
     results_dict['REO_Time'] = dt_r
+    results_dict['REO_iters'] = REO_iters
+    results_dict['GPO_iters'] = GPO_iters
 
     return results_dict
 
@@ -77,6 +79,8 @@ if __name__ == '__main__':
     gpo_f = results['GPO_opt']
     print('GPO Time: ', results['GPO_Time'])
     print('REO Time: ', results['REO_Time'])
+    print('GPO Iters: ', results['GPO_iters'])
+    print('REO Iters: ', results['REO_iters'])
 
     plt.figure(1)
     plt.plot(reo_f[0, :], reo_f[1, :], label='REO', color='b')
@@ -86,7 +90,7 @@ if __name__ == '__main__':
     plt.legend(['REO Path', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False,
                shadow=False, ncol=2)
 
-    plt.savefig("plots_hw/reo_hw.svg", bbox_inches='tight', pad_inches=0)
+    plt.savefig("plots_hw/reo_hw.eps", bbox_inches='tight', format='eps', pad_inches=0)
 
     plt.figure(2)
     plt.plot(gpo_f[0, :], gpo_f[1, :], label='GPO', color='b')
@@ -94,7 +98,7 @@ if __name__ == '__main__':
         plt.plot(gpo_f[0, loop], gpo_f[1, loop], 'r')  # plot the loop closures.
     plt.axis([-20, 20, -3, 38])
     plt.legend(['GPO Path', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=2)
-    plt.savefig("plots_hw/gpo_hw.svg", bbox_inches='tight', pad_inches=0)
+    plt.savefig("plots_hw/gpo_hw.eps", bbox_inches='tight', format='eps', pad_inches=0)
     plt.show()
 
 
