@@ -5,6 +5,7 @@ from REO import invert_transform, concatenate_transform, invert_edges, get_globa
 from GPO import GPO
 import os, subprocess
 import json
+import time
 
 
 def norm(v, axis=None):
@@ -38,33 +39,23 @@ def run(data):
     # Optimize with both optimizers
     results_dict['edges'].append(edges)
     results_dict['nodes'].append(nodes)
-    # Error is on line 229 of backend_optimizer.cpp
+
+    t0_g = time.time()
     GPO_optimized, GPO_iters = gpo.opt(edges, nodes, '0_000', 25, 1e-8)  # This throws and error when calling the optimize function
+    tf_g = time.time()
+    dt_g = tf_g - t0_g
+
+    t0_r = time.time()
     REO_optimized, REO_iters = REO_opt(edges, nodes, '0_000', 25, 1e-8)
-    results_dict['GPO_opt'].append(GPO_optimized)
-    results_dict['REO_opt'].append(REO_optimized)
-    results_dict['truth'].append(truth)
+    tf_r = time.time()
+    dt_r = tf_r - t0_r
 
+    results_dict['GPO_opt'] = GPO_optimized
+    results_dict['REO_opt'] = REO_optimized
+    results_dict['GPO_Time'] = dt_g
+    results_dict['REO_Time'] = dt_r
 
-    # # Calculate Error  Right now these don't mean much
-    # initial_error = np.sum(norm(global_state[i, 0:2, :] - truth[0:2, :], axis=0))
-    # REO_error = np.sum(norm(REO_optimized[0:2, :] - truth[0:2, :], axis=0))
-    # diff_error = np.sum(norm(REO_optimized[0:2, :] - GPO_optimized[0:2, :], axis=0))
-    # GPO_error = np.sum(norm(GPO_optimized[0:2, :] - truth[0:2, :], axis=0))\
-    #
-    # results_dict['REO_errors'].append(REO_error)
-    # results_dict['GPO_errors'].append(GPO_error)
-    # results_dict['diff_errors'].append(diff_error)
-    # results_dict['REO_iters'].append(REO_iters)
-    # results_dict['GPO_iters'].append(GPO_iters)
-    #
-    # if REO_error < 0.01:
-    #     results_dict['num_REO_correct'] += 1
-    # if GPO_error < 0.01:
-    #     results_dict['num_GPO_correct'] += 1
-    #
-    # return results_dict
-    return REO_optimized, GPO_optimized
+    return results_dict
 
 if __name__ == '__main__':
     subprocess.Popen(['mkdir', '-p', 'tests/well_conditioned/plots_hw'])
@@ -81,14 +72,19 @@ if __name__ == '__main__':
     os.chdir("tests/well_conditioned")
 
     print( "running optimization")
-    reo_f, gpo_f = run(data)
+    results = run(data)
+    reo_f = results['REO_opt']
+    gpo_f = results['GPO_opt']
+    print('GPO Time: ', results['GPO_Time'])
+    print('REO Time: ', results['REO_Time'])
 
     plt.figure(1)
     plt.plot(reo_f[0, :], reo_f[1, :], label='REO', color='b')
     for i, loop in enumerate(lc):
         plt.plot(reo_f[0, loop], reo_f[1, loop], 'r')  # plot the loop closures.
     plt.axis([-20, 20, -3, 38])
-    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=4)
+    plt.legend(['REO Path', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False,
+               shadow=False, ncol=2)
 
     plt.savefig("plots_hw/reo_hw.svg", bbox_inches='tight', pad_inches=0)
 
@@ -97,7 +93,7 @@ if __name__ == '__main__':
     for i, loop in enumerate(lc):
         plt.plot(gpo_f[0, loop], gpo_f[1, loop], 'r')  # plot the loop closures.
     plt.axis([-20, 20, -3, 38])
-    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=4)
+    plt.legend(['GPO Path', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=2)
     plt.savefig("plots_hw/gpo_hw.svg", bbox_inches='tight', pad_inches=0)
     plt.show()
 
