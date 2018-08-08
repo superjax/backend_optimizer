@@ -39,9 +39,8 @@ def run(data):
     results_dict['edges'].append(edges)
     results_dict['nodes'].append(nodes)
     # Error is on line 229 of backend_optimizer.cpp
-    REO_optimized, REO_iters = REO_opt(edges, nodes, '0_000', 25, 1e-8)
     GPO_optimized, GPO_iters = gpo.opt(edges, nodes, '0_000', 25, 1e-8)  # This throws and error when calling the optimize function
-    # REO_optimized, REO_iters = REO_opt(edges, nodes, '0_000', 25, 1e-8)
+    REO_optimized, REO_iters = REO_opt(edges, nodes, '0_000', 25, 1e-8)
     results_dict['GPO_opt'].append(GPO_optimized)
     results_dict['REO_opt'].append(REO_optimized)
     results_dict['truth'].append(truth)
@@ -85,13 +84,23 @@ if __name__ == '__main__':
     reo_f, gpo_f = run(data)
 
     plt.figure(1)
-    plt.plot(reo_f[0, :], reo_f[1, :])  # Currently the REO_optimization doesn't do anything
-    # for i, loop in enumerate(lc):
-    #     plt.plot(results[1, loop], results[2, loop], 'r')  # plot the loop closures
+    plt.plot(reo_f[0, :], reo_f[1, :], label='REO', color='b')
+    for i, loop in enumerate(lc):
+        plt.plot(reo_f[0, loop], reo_f[1, loop], 'r')  # plot the loop closures.
+    plt.axis([-20, 20, -3, 38])
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=4)
+
+    plt.savefig("plots_hw/reo_hw.svg", bbox_inches='tight', pad_inches=0)
 
     plt.figure(2)
-    plt.plot(gpo_f[0, :], gpo_f[1, :])  # Currently the GPO_optimization doesn't do anything either
+    plt.plot(gpo_f[0, :], gpo_f[1, :], label='GPO', color='b')
+    for i, loop in enumerate(lc):
+        plt.plot(gpo_f[0, loop], gpo_f[1, loop], 'r')  # plot the loop closures.
+    plt.axis([-20, 20, -3, 38])
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=4)
+    plt.savefig("plots_hw/gpo_hw.svg", bbox_inches='tight', pad_inches=0)
     plt.show()
+
 
     # reo_f['avg_REO_error'] = sum(reo_f['REO_errors']) / float(reo_f['num_robots'])
     # reo_f['avg_GPO_error'] = sum(reo_f['GPO_errors']) / float(reo_f['num_robots'])
