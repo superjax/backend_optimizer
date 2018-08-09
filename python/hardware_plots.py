@@ -41,7 +41,7 @@ def run(data):
     results_dict['nodes'].append(nodes)
 
     t0_g = time.time()
-    GPO_optimized, GPO_iters = gpo.opt(edges, nodes, '0_000', 25, 1e-8)  # This throws and error when calling the optimize function
+    GPO_optimized, GPO_iters = gpo.opt(edges, nodes, '0_000', 25, 1e-8)
     tf_g = time.time()
     dt_g = tf_g - t0_g
 

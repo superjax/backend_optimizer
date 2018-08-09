@@ -65,8 +65,7 @@ if __name__ == '__main__':
 
     f = open('data2.txt', 'r')
     data = json.load(f)
-    lc1 = data['lc1']
-    lc2 = data['lc2']
+    lc = data['lc']
 
     cwd = os.getcwd()
     os.chdir("tests/well_conditioned")
@@ -80,21 +79,21 @@ if __name__ == '__main__':
     print('GPO Iters: ', results['GPO_iters'])
     print('REO Iters: ', results['REO_iters'])
 
-    # plt.figure(1)
-    # plt.plot(reo_f[0, :], reo_f[1, :], label='REO', color='b')
-    # for i, loop in enumerate(lc):
-    #     plt.plot(reo_f[0, loop], reo_f[1, loop], 'r')  # plot the loop closures.
-    # plt.axis([-20, 20, -3, 38])
-    # plt.legend(['REO Path', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False,
-    #            shadow=False, ncol=2)
-    #
-    # plt.savefig("plots_hw/reo_hw.eps", bbox_inches='tight', format='eps', pad_inches=0)
-    #
-    # plt.figure(2)
-    # plt.plot(gpo_f[0, :], gpo_f[1, :], label='GPO', color='b')
-    # for i, loop in enumerate(lc):
-    #     plt.plot(gpo_f[0, loop], gpo_f[1, loop], 'r')  # plot the loop closures.
-    # plt.axis([-20, 20, -3, 38])
-    # plt.legend(['GPO Path', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=2)
-    # plt.savefig("plots_hw/gpo_hw.eps", bbox_inches='tight', format='eps', pad_inches=0)
-    # plt.show()
+    plt.figure(1)
+    plt.plot(reo_f[0, :], reo_f[1, :], label='REO', color='b')
+    for i, loop in enumerate(lc):
+        plt.plot(reo_f[0, loop], reo_f[1, loop], 'r')  # plot the loop closures.
+    plt.axis([-20, 20, -3, 38])
+    plt.legend(['REO Path', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False,
+               shadow=False, ncol=2)
+
+    plt.savefig("plots_hw/multi_reo_hw.eps", bbox_inches='tight', format='eps', pad_inches=0)
+
+    plt.figure(2)
+    plt.plot(gpo_f[0, :], gpo_f[1, :], label='GPO', color='b')
+    for i, loop in enumerate(lc):
+        plt.plot(gpo_f[0, loop], gpo_f[1, loop], 'r')  # plot the loop closures.
+    plt.axis([-20, 20, -38, 40])
+    plt.legend(['GPO Path', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=2)
+    plt.savefig("plots_hw/multi_gpo_hw.eps", bbox_inches='tight', format='eps', pad_inches=0)
+    plt.show()

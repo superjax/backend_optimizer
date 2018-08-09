@@ -90,6 +90,12 @@ if __name__ == "__main__":
     for node in nodes2:
         nodes.append(node)
 
+    lc = []
+    for loop in lc1:
+        lc.append(loop)
+    for loop in lc2:
+        lc.append(loop)
+
     # print len(nodes)
     # print len(nodes1)
 
@@ -102,6 +108,7 @@ if __name__ == "__main__":
     data['nodes2'] = nodes2
     data['lc1'] = lc1
     data['lc2'] = lc2
+    data['lc'] = lc
     data['truth'] = nodes
     data['global'] = nodes
 
