@@ -67,8 +67,6 @@ if __name__ == '__main__':
     edges = data['edges']
     nodes = data['nodes']
     lc = data['loop_closures']
-    for i in range(len(nodes)):
-        nodes[i][0] = str(nodes[i][0]).zfill(3)
 
     cwd = os.getcwd()
     os.chdir("tests/well_conditioned")
