@@ -14,6 +14,9 @@ def get_edges(msgs, begin, end, l, flipped):
     for i in range(begin, end):
         to_id = msgs[i].to_node_id
         from_id = msgs[i].from_node_id
+        if flipped:
+            to_id += 1
+            from_id +=1
         x = msgs[i].transform.translation.x
         y = msgs[i].transform.translation.y
         n1 = msgs[i].transform.rotation.x
@@ -48,7 +51,7 @@ def get_edges(msgs, begin, end, l, flipped):
                     phi1 -= 2. * np.pi
                 elif phi1 < -np.pi:
                     phi1 += 2. * np.pi
-                x.append(['0_' + str(i + l + 1).zfill(3), x1, y1, phi1])  # need to adjust this
+                x.append(['0_' + str(i + l + 1).zfill(3), x1, y1, phi1])
                 x2.append([i + 1, x1, y1, phi1])
                 i += 1
 
@@ -72,12 +75,23 @@ if __name__ == "__main__":
     edges2, nodes2, x2, lc2 = get_edges(msgs, l, len(msgs), len(nodes1), True)
 
     # Is this what I want to do?
-    edges = edges1
+    edges = []
+    for edge in edges1:
+        edges.append(edge)
     for edge in edges2:
         edges.append(edge)
-    nodes = nodes1
+
+    # print len(edges)
+    # print len(edges1)
+
+    nodes = []
+    for node in nodes1:
+        nodes.append(node)
     for node in nodes2:
-        nodes1.append(node)
+        nodes.append(node)
+
+    # print len(nodes)
+    # print len(nodes1)
 
     data = dict()
     data['edges'] = edges
@@ -106,7 +120,6 @@ if __name__ == "__main__":
 
         for i, loop in enumerate(lc1):
             plt.plot(x[loop, 1], x[loop, 2], 'r')  # plot the loop closures
-
 
         for i, loop in enumerate(lc2):
             if loop[0] < t:

@@ -40,25 +40,24 @@ def run(data):
     results_dict['edges'].append(edges)
     results_dict['nodes'].append(nodes)
 
-    # t0_g = time.time()
-    # GPO_optimized, GPO_iters = gpo.opt(edges, nodes, '0_000', 25, 1e-8)  # This throws and error when calling the optimize function
-    # tf_g = time.time()
-    # dt_g = tf_g - t0_g
+    t0_g = time.time()
+    GPO_optimized, GPO_iters = gpo.opt(edges, nodes, '0_000', 25, 1e-8)  # This throws and error when calling the optimize function
+    tf_g = time.time()
+    dt_g = tf_g - t0_g
 
     t0_r = time.time()
     REO_optimized, REO_iters = REO_opt(edges, nodes, '0_000', 25, 1e-8)
     tf_r = time.time()
     dt_r = tf_r - t0_r
 
-    # results_dict['GPO_opt'] = GPO_optimized
-    # results_dict['REO_opt'] = REO_optimized
-    # results_dict['GPO_Time'] = dt_g
-    # results_dict['REO_Time'] = dt_r
-    # results_dict['REO_iters'] = REO_iters
-    # results_dict['GPO_iters'] = GPO_iters
-    #
-    # return results_dict
-    return REO_optimized
+    results_dict['GPO_opt'] = GPO_optimized
+    results_dict['REO_opt'] = REO_optimized
+    results_dict['GPO_Time'] = dt_g
+    results_dict['REO_Time'] = dt_r
+    results_dict['REO_iters'] = REO_iters
+    results_dict['GPO_iters'] = GPO_iters
+
+    return results_dict
 
 
 if __name__ == '__main__':
@@ -74,17 +73,12 @@ if __name__ == '__main__':
 
     print( "running optimization")
     results = run(data)
-    # reo_f = results['REO_opt']
-    # gpo_f = results['GPO_opt']
-    # print('GPO Time: ', results['GPO_Time'])
-    # print('REO Time: ', results['REO_Time'])
-    # print('GPO Iters: ', results['GPO_iters'])
-    # print('REO Iters: ', results['REO_iters'])
-
-    plt.figure(1)
-    plt.plot(results[0, :], results[1, :])
-    plt.axis([-20, 20, -3, 38])
-    plt.show()
+    reo_f = results['REO_opt']
+    gpo_f = results['GPO_opt']
+    print('GPO Time: ', results['GPO_Time'])
+    print('REO Time: ', results['REO_Time'])
+    print('GPO Iters: ', results['GPO_iters'])
+    print('REO Iters: ', results['REO_iters'])
 
     # plt.figure(1)
     # plt.plot(reo_f[0, :], reo_f[1, :], label='REO', color='b')
