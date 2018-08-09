@@ -39,8 +39,8 @@ def get_edges(msgs, begin, end, l, flipped):
         x = [['0_' + str(l).zfill(3), 0, 0, 0]]
         x2 = [[0, 0, 0, 0]]
         if flipped:  # flip the initial orientation of the second robot
-            x2[0][3] = np.pi
-            x[0][3] = np.pi
+            x2[0][3] = math.radians(165.0)
+            x[0][3] = math.radians(165.0)
         i = 0
         for edge in edges:
             if int(edge[1].split("_")[1]) - int(edge[0].split("_")[1]) == 1:
@@ -142,7 +142,7 @@ if __name__ == "__main__":
         plt.legend(['Robot 1', 'Robot 2', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False,
                    shadow=False, ncol=3)
 
-        plt.savefig("tests/well_conditioned/plots_hw/data_multi.eps", bbox_inches='tight', format='eps', pad_inches=0)
+        # plt.savefig("tests/well_conditioned/plots_hw/data_multi.eps", bbox_inches='tight', format='eps', pad_inches=0)
         plt.show()
 
 
