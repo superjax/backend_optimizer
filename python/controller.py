@@ -18,27 +18,57 @@ class Controller:
         self.waypoint = np.array([init_pose]).T + R.dot(np.array([[self.grid_size, 0, 0]]).T)
 
 
-    def control(self, t, pose):
-        # have we entered an intersection?
-        delta_x = self.waypoint[0, 0] - pose[0]
-        delta_y = self.waypoint[1, 0] - pose[1]
-        if abs(delta_x) < self.intersection_radius and abs(delta_y) < self.intersection_radius:
-            # We just entered an intersection
+    def get_waypoint(self, pose, boundary):
+        # We just entered an intersection
+        state = True
+        while state:
             random_number = random()
             if random_number < 0.9:
                 # Straight
                 next_waypoint = [self.grid_size, 0, 0]
             elif random_number < 0.95:
                 # Left
-                next_waypoint = [0, -self.grid_size, -pi/2]
-            else: # Right
-                next_waypoint = [0, self.grid_size, pi/2]
+                next_waypoint = [0, -self.grid_size, -pi / 2]
+            else:  # Right
+                next_waypoint = [0, self.grid_size, pi / 2]
 
             psi0 = self.waypoint[2, 0]
             R = np.array([[cos(psi0), -sin(psi0), 0],
                           [sin(psi0), cos(psi0), 0],
                           [0, 0, 1]])
-            self.waypoint = np.array(self.waypoint) + R.dot(np.array([next_waypoint]).T)
+            # self.waypoint = np.array(self.waypoint) + R.dot(np.array([next_waypoint]).T)
+            temp = np.array(self.waypoint) + R.dot(np.array([next_waypoint]).T)
+
+            if temp[0,0] < boundary[0] and temp[0,0] > - boundary[0]:
+                if temp[1, 0] < boundary[1] and temp[1, 0] > -boundary[1]:
+                    state = False
+
+        return temp
+
+
+    def control(self, t, pose, boundary):
+        # have we entered an intersection?
+        delta_x = self.waypoint[0, 0] - pose[0]
+        delta_y = self.waypoint[1, 0] - pose[1]
+        if abs(delta_x) < self.intersection_radius and abs(delta_y) < self.intersection_radius:
+            # # We just entered an intersection
+            # random_number = random()
+            # if random_number < 0.9:
+            #     # Straight
+            #     next_waypoint = [self.grid_size, 0, 0]
+            # elif random_number < 0.95:
+            #     # Left
+            #     next_waypoint = [0, -self.grid_size, -pi/2]
+            # else: # Right
+            #     next_waypoint = [0, self.grid_size, pi/2]
+            #
+            # psi0 = self.waypoint[2, 0]
+            # R = np.array([[cos(psi0), -sin(psi0), 0],
+            #               [sin(psi0), cos(psi0), 0],
+            #               [0, 0, 1]])
+            # # self.waypoint = np.array(self.waypoint) + R.dot(np.array([next_waypoint]).T)
+            # self.waypoint = np.array(self.waypoint) + R.dot(np.array([next_waypoint]).T)
+            self.waypoint = self.get_waypoint(pose, boundary)
             # Re-evaluate the vector to the goal
             delta_x = self.waypoint[0, 0] - pose[0]
             delta_y = self.waypoint[1, 0] - pose[1]
