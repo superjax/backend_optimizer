@@ -27,7 +27,6 @@ class Robot():
         self.plt_nodes = [[0, self.x, self.y, self.psi]]
         self.true_nodes = [[0, self.x_true, self.y_true, self.psi_true]]
         self.I_nodes = [[0, self.xI, self.yI, self.psiI]]
-        self.I = [[0, self.xI, self.yI, self.psiI]]
 
     def propagate_dynamics(self, u, dt):
         noise = np.array([[np.random.normal(0, self.G[0, 0])],
@@ -96,9 +95,6 @@ class Robot():
         self.true_nodes.append([len(self.true_nodes), true_node[0], true_node[1], true_node[2]])
         node_I = self.concatenate_edges(self.I_nodes[-1], true_edge)
         self.I_nodes.append([len(self.I_nodes), node_I[0], node_I[1], node_I[2]])
-
-        temp = self.state()
-        self.I.append([len(self.I), temp[0], temp[1], temp[2]])
 
         # reset state
         self.x = 0

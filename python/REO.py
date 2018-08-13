@@ -3,6 +3,7 @@ import scipy.sparse
 import scipy.linalg
 import sys
 import numpy.matlib
+import tqdm
 
 
 def concatenate_transform(T1, T2):
@@ -159,13 +160,14 @@ class REO():
                 b -= mask.dot(H_az.T).dot(this_lc_omega).dot(residual).flatten()
 
             # Solve
+            print("Solving")
             z_star = scipy.linalg.solve(A, b)
             diff = scipy.linalg.norm(z_star.flatten())
 
             z_star = z_star.reshape(z_hat.shape, order='F')
 
             z_hat += z_star
-            # print( "REO iter: ", iter, ":", diff)
+            print( "REO iter: ", iter, ":", diff)
 
             iter += 1
 
@@ -303,6 +305,7 @@ if __name__ == '__main__':
     iter = 0
     diff = 10000
     while iter < num_iters and diff > 0.00001:
+        print('New iteration')
 
         global_pose = np.zeros((3, edges.shape[1]+1))
         for i in range(edges.shape[1]):
