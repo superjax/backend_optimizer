@@ -76,7 +76,7 @@ def get_edges(plot):
             plt.plot(x2[loop, 1], x2[loop, 2], 'r')  # plot the loop closures
         plt.axis([-20, 20, -3, 38])
         plt.legend(['Initial Data', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False,
-                   shadow=False, ncol=2)
+                   shadow=False, ncol=2, prop={'size' : 14})
 
         plt.savefig("tests/well_conditioned/plots_hw/data_hw.eps", bbox_inches='tight', format='eps', pad_inches=0)
         plt.show()

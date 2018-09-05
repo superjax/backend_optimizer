@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
         # plt.axis([-20, 20, -3, 38])
         plt.legend(['Robot 1', 'Robot 2', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False,
-                   shadow=False, ncol=3)
+                   shadow=False, ncol=3, prop={'size' : 14})
 
         # plt.savefig("tests/well_conditioned/plots_hw/data_multi.eps", bbox_inches='tight', format='eps', pad_inches=0)
         plt.show()

@@ -113,7 +113,6 @@ class REO():
 
         for i in range(len(lc_dirs)):
             if lc_dirs[i] < 0:
-                # lcs[i] = self.invert_transform(lcs[i])  # Why is this self?
                 lcs[:, i] = invert_transform(lcs[:, i])
 
         diff = sys.float_info.max
@@ -131,6 +130,8 @@ class REO():
 
             A = Omega.copy()
             b = -Omega.dot(delta.flatten(order='F'))
+
+            # Determine n here
 
             for i in range(len(cycles)):
                 this_edges = z_hat[:, cycles[i]]
@@ -156,11 +157,13 @@ class REO():
                 if residual[2] <= -np.pi:
                     residual[2] += 2.0*np.pi
 
-                A += mask.dot(H_az.T).dot(this_lc_omega).dot(H_az).dot(mask.T)
-                b -= mask.dot(H_az.T).dot(this_lc_omega).dot(residual).flatten()
+                n = 1.0  # TODO:  figure out n
+
+                A += 1.0/n * mask.dot(H_az.T).dot(this_lc_omega).dot(H_az).dot(mask.T)
+                b -= 1.0/n * mask.dot(H_az.T).dot(this_lc_omega).dot(residual).flatten()
 
             # Solve
-            print("Solving")
+            # print("Solving")
             z_star = scipy.linalg.solve(A, b)
             diff = scipy.linalg.norm(z_star.flatten())
 

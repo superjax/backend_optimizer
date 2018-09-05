@@ -13,23 +13,23 @@ if __name__ == "__main__":
     #     os.mkdir("tests/well_conditioned/demo_2_plots")
     # os.chdir("tests/well_conditioned")
     dt = 0.1    
-    time = np.arange(0, 100.01, dt) # origninal time was 300
+    time = np.arange(0, 200.01, dt) # origninal time was 300
     colors = ['r', 'b', 'g', 'k', 'm', 'c', 'y', 'r--', 'b--', 'g--']
 
     robots = []
     controllers = []
-    num_robots = 3  # Will up to 10 later. Start with 2 while familiarizing myself.
+    num_robots = 2  # Will up to 10 later. Start with 2 while familiarizing myself.
     KF_frequency_s = 1.0
     plot_frequency_s = 10
 
-    start_pose_range = [1, 1, 2] # initial values were 5, 3, 2
+    start_pose_range = [2, 2, 2] # initial values were 5, 3, 2
 
     start_poses = [[randint(-start_pose_range[0], start_pose_range[0])*10,
                     (-1)**r * start_pose_range[1]*10,
                     -np.pi/2.0 if r % 2 == 0 else np.pi/2.0] for r in range(num_robots)]
 
     P_perfect = np.array([[0.00001, 0, 0], [0, 0.00001, 0], [0, 0, 0.00001]])
-    G = np.array([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]])  # May need to play with covariances a little. Who knows
+    G = np.array([[0.1, 0, 0], [0, 0.1, 0], [0, 0, 0.1]])
     lc_cov = np.array([[0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.3]])
 
     print("simulating robots")
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     for t in tqdm(time):
         for r in range(num_robots):
             # Run each robot through the trajectory
-            u = controllers[r].control(t, robots[r].state(), [start_pose_range[0]*10+5, start_pose_range[1]*10+5])
+            u = controllers[r].control(t, robots[r].state(), [start_pose_range[0]*10+1, start_pose_range[1]*10+1])
             robots[r].propagate_dynamics(u, dt)
             if t % KF_frequency_s == 0 and t > 0:
                 # Declare a new keyframe
@@ -73,15 +73,16 @@ if __name__ == "__main__":
             nodes.append(n)
         for n in robots[r].I_nodes:
             truth.append(n)
-        for l in lc:
-            from_id = l['from_node_id']
-            to_id = l['to_node_id']
-            tf = l['transform']
-            cov = l['covariance']
-            edges.append([from_id, to_id, tf[0], tf[1], tf[2], 1.0/cov[0, 0], 1.0/cov[1, 1], 1.0/cov[2, 2]])
+    for l in lc:
+        from_id = l['from_node_id']
+        to_id = l['to_node_id']
+        tf = l['transform']
+        cov = l['covariance']
+        edges.append([from_id, to_id, tf[0], tf[1], tf[2], 1.0/cov[0, 0], 1.0/cov[1, 1], 1.0/cov[2, 2]])
 
     print(len(edges))
     print(len(nodes))
+    print(len(lc))
 
 
     data = dict()

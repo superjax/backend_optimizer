@@ -94,13 +94,6 @@ if __name__ == '__main__':
     #            shadow=False, ncol=3)
     plt.savefig("demo_2_plots/reo_data.eps", bbox_inches='tight', format='eps', pad_inches=0)
 
-    # plt.figure(2)
-    # plt.plot(gpo_f[0, :], gpo_f[1, :], label='GPO', color='b')
-    # # for i, loop in enumerate(lc):
-    # #     plt.plot(gpo_f[0, loop], gpo_f[1, loop], 'r')  # plot the loop closures.
-    # # plt.axis([-20, 20, -38, 40])
-    # plt.legend(['GPO Path', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=2)
-    # # plt.savefig("plots_hw/multi_gpo_hw.eps", bbox_inches='tight', format='eps', pad_inches=0)
 
     plt.figure(2)
     for i in range(len(num_nodes)):

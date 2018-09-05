@@ -82,7 +82,7 @@ class Robot():
         self.keyframes.append(keyframe)
         to_id = str(self.id) + "_" + str(self.keyframe_id()).zfill(3)
         from_id = str(self.id) + "_" + str(self.keyframe_id()-1).zfill(3)
-        edge = [from_id, to_id, self.x, self.y, self.psi, 1.0/self.G[0,0], 1.0/self.G[1, 1], 1.0/self.G[2, 2]]
+        edge = [from_id, to_id, self.x, self.y, self.psi, 1.0/self.G[0, 0], 1.0/self.G[1, 1], 1.0/self.G[2, 2]]
         true_edge = [self.keyframe_id() - 1, self.keyframe_id(), self.x_true, self.y_true, self.psi_true]
         self.edges.append(edge)
         self.true_edges.append(true_edge)
