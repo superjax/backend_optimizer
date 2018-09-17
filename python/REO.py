@@ -104,6 +104,7 @@ class REO():
 
         # create giant combined omega
         Omega = scipy.sparse.block_diag(Omegas).toarray()
+        O_inv = np.linalg.inv(Omega)
 
         # Initialize z_hat
         if type(x0) is np.ndarray:
@@ -131,13 +132,28 @@ class REO():
             A = Omega.copy()
             b = -Omega.dot(delta.flatten(order='F'))
 
-            # Determine n here
+            # Determine in how many loops each edge appears
+            edge_counter = dict()
+            for loop in cycles:
+                for i in range(len(loop)):
+                    from_id = loop[i]
+                    if i == len(loop)-1:
+                        to_id = loop[0]
+                    else:
+                        to_id = loop[i+1]
+
+                    edge = str(from_id).zfill(3) + "_" + str(to_id).zfill(3)
+                    if edge in edge_counter:
+                        edge_counter[edge] += 1.0
+                    else:
+                        edge_counter[edge] = 1.0
 
             for i in range(len(cycles)):
                 this_edges = z_hat[:, cycles[i]]
                 this_dirs = dirs[cycles[i]]
                 this_lc = lcs[:, i]
                 this_lc_omega = lc_omegas[i]
+                loop = cycles[i]
 
                 # Create the mask to put the edges in their place when we are done
                 mask = np.zeros((3*z_hat.shape[1], 3*this_edges.shape[1]))
@@ -145,7 +161,7 @@ class REO():
                     mask[3*cycles[i][j]:3*cycles[i][j]+3,3*j:3*j+3] = np.eye(3)
 
                 # Find Jacobian of cycle at this linearization point
-                H_az = self.calc_jacobian_of_string_with_reversed_edges(this_edges, this_dirs)
+                H_az = self.calc_jacobian_of_string_with_reversed_edges(this_edges, this_dirs, loop, edge_counter)
 
                 # concatenate edges
                 z_long_way = self.compound_edges(this_edges, this_dirs)
@@ -157,10 +173,31 @@ class REO():
                 if residual[2] <= -np.pi:
                     residual[2] += 2.0*np.pi
 
-                n = 1.0  # TODO:  figure out n
+                # m = np.zeros((1, H_az.shape[1]))
+                m = np.zeros((H_az.shape[1], H_az.shape[1]))
+                for i in range(len(loop)):
+                    from_id = loop[i]
+                    if i == len(loop)-1:
+                        to_id = loop[0]
+                    else:
+                        to_id = loop[i+1]
 
-                A += 1.0/n * mask.dot(H_az.T).dot(this_lc_omega).dot(H_az).dot(mask.T)
-                b -= 1.0/n * mask.dot(H_az.T).dot(this_lc_omega).dot(residual).flatten()
+                    edge = str(from_id).zfill(3) + "_" + str(to_id).zfill(3)
+                    m[3*i, 3*i] = 1.0/edge_counter[edge]
+                    m[3*i+1, 3 * i + 1] = 1.0 / edge_counter[edge]
+                    m[3*i+2, 3 * i + 2] = 1.0 / edge_counter[edge]
+
+
+                tempA = m.dot(H_az.T.dot(this_lc_omega).dot(H_az))
+                A += mask.dot(tempA).dot(mask.T)
+                b -= mask.dot(m.dot(H_az.T.dot(this_lc_omega).dot(residual))).flatten()
+
+
+            val = self.get_cost_function_value(z_hat, z_bar, O_inv)
+
+            if val < .00315 and iter !=0:
+                break
+
 
             # Solve
             # print("Solving")
@@ -170,12 +207,25 @@ class REO():
             z_star = z_star.reshape(z_hat.shape, order='F')
 
             z_hat += z_star
-            print( "REO iter: ", iter, ":", diff)
+            # print( "REO iter: ", iter, ":", diff)
 
             iter += 1
 
         # Update estimate
         return z_hat.copy(), diff, iter
+
+
+    def get_cost_function_value(self, z_hat, z_bar, Omega):
+        z_hat = z_hat.flatten('F')
+        z_bar = z_bar.flatten('F')
+
+        e = z_hat - z_bar
+
+        val = e.T.dot(Omega).dot(e)
+        print(val)
+
+        return val
+
 
     def compound_edges(self, z, dirs):
         p = np.zeros(3)
@@ -195,7 +245,7 @@ class REO():
                 p[2] += 2.0 * np.pi
         return p
 
-    def calc_jacobian_of_string_with_reversed_edges(self, z, dirs):
+    def calc_jacobian_of_string_with_reversed_edges(self, z, dirs, loop, edge_counter):
 
         dtrans = z[0:2,:]
         thetas = z[2,:]
@@ -215,8 +265,18 @@ class REO():
                 # if the edge is inverted, the angle shows up early, and it is backward
                 cumsum_angle -= thetas[i]
                 angles[i] = -cumsum_angle
+
+            from_edge = str(loop[i]).zfill(3)
+            if i == num_edges - 1:
+                to_edge = str(loop[0]).zfill(3)
+            else:
+                to_edge = str(loop[i+1]).zfill(3)
+
+            edge = from_edge + "_" + to_edge
+            n = edge_counter[edge]
+
             # Fill in the translation jacobian
-            H[0:2, 3*i:3*i+2] = self.R(angles[i])
+            H[0:2, 3*i:3*i+2] = self.R(angles[i])  # Multiply by n here
 
         for i in range(num_edges):
             # Calculate the rotation jacobian
@@ -228,8 +288,8 @@ class REO():
             if dirs[i] < 0:
                 dt_dtheta += self.R(angles[i] + np.pi/2.0).dot(dtrans[:,i])
                 dt_dtheta *= -1.0
-            H[0:2, 3*i+2] = dt_dtheta
-            H[2, 3*i+2] = dirs[i]
+            H[0:2, 3*i+2] = dt_dtheta  # Multiply by n here
+            H[2, 3*i+2] = dirs[i]  # Multiply by n here
         return H
 
     def R(self,theta):
@@ -377,6 +437,6 @@ def REO_opt(edges, nodes, origin_node, num_iters, tol):
                 lc_dirs.append(-1)
 
     z_hat, diff, iters = reo.optimize(np.array(odom).T, np.array(dirs), Omegas, np.atleast_2d(np.array(lc).squeeze()).T,
-                                      lc_omegas, np.array(lc_dirs), np.array(cycles), num_iters, tol)
+                                      lc_omegas, np.array(lc_dirs), np.array(cycles), num_iters, tol, x0=nodes)
     x_hat = get_global_pose(z_hat, np.array([0, 0, 0]))
     return x_hat, iters

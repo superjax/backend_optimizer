@@ -69,6 +69,7 @@ if __name__ == "__main__":
             msgs.append(msg)
 
     l = int(math.floor(len(msgs) / 2.0))  # this is the node that splits what is covered by each robot
+    print(l)
 
     plot = True
     edges1, nodes1, x,  lc1 = get_edges(msgs, 0, l, 0, False)  # get edges for the first robot
@@ -111,6 +112,8 @@ if __name__ == "__main__":
     data['lc'] = lc
     data['truth'] = nodes
     data['global'] = nodes
+    data['poses1'] = x
+    data['poses2'] = x2
 
     filename = "data2.txt"
     f = open(filename, 'w')
@@ -124,6 +127,7 @@ if __name__ == "__main__":
         x2 = np.array(x2)
         plt.plot(x[:, 1], x[:, 2], color='b')
         plt.plot(x2[:, 1], x2[:, 2], color='k')
+        plt.title("Initial Data")
 
         for i, loop in enumerate(lc1):
             plt.plot(x[loop, 1], x[loop, 2], 'r')  # plot the loop closures
@@ -142,7 +146,7 @@ if __name__ == "__main__":
         plt.legend(['Robot 1', 'Robot 2', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False,
                    shadow=False, ncol=3, prop={'size' : 14})
 
-        # plt.savefig("tests/well_conditioned/plots_hw/data_multi.eps", bbox_inches='tight', format='eps', pad_inches=0)
+        plt.savefig("tests/well_conditioned/plots_hw/data_multi.eps", bbox_inches='tight', format='eps', pad_inches=0)
         plt.show()
 
 

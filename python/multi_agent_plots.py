@@ -79,8 +79,18 @@ if __name__ == '__main__':
     print('GPO Iters: ', results['GPO_iters'])
     print('REO Iters: ', results['REO_iters'])
 
+    data2 = dict()
+    data2['REO_opt'] = reo_f.tolist()
+    data2['GPO_opt'] = gpo_f.tolist()
+
+    filename2 = "optimization_data2.txt"
+    d = open(filename2, 'w')
+    json.dump(data2, d)
+    d.close()
+
     plt.figure(1)
     plt.plot(reo_f[0, :], reo_f[1, :], label='REO', color='b')
+    plt.title("REO")
     for i, loop in enumerate(lc):
         plt.plot(reo_f[0, loop], reo_f[1, loop], 'r')  # plot the loop closures.
     plt.axis([-20, 20, -3, 38])
@@ -91,6 +101,7 @@ if __name__ == '__main__':
 
     plt.figure(2)
     plt.plot(gpo_f[0, :], gpo_f[1, :], label='GPO', color='b')
+    plt.title("GPO")
     for i, loop in enumerate(lc):
         plt.plot(gpo_f[0, loop], gpo_f[1, loop], 'r')  # plot the loop closures.
     plt.axis([-20, 20, -38, 40])

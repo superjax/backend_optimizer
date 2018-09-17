@@ -40,27 +40,39 @@ def run(data):
     results_dict['edges'].append(edges)
     results_dict['nodes'].append(nodes)
 
-    t0_r = time.time()
-    REO_optimized, REO_iters = REO_opt(edges, nodes, '0_000', 25, 1e-8)
-    tf_r = time.time()
-    dt_r = tf_r - t0_r
-
-    nodes2 = []
-    for i in range(len(REO_optimized[0])):
-        id = '0_' + str(i).zfill(3)
-        temp = [id, REO_optimized[0][i], REO_optimized[1][i], REO_optimized[2][i]]
-        nodes2.append(temp)
-
-    t0_g = time.time()
-    # GPO_optimized, GPO_iters = gpo.opt(edges, nodes, '0_000', 25, 1e-8)
-    GPO_optimized, GPO_iters = gpo.opt(edges, nodes2, '0_000', 25, 1e-8)
-    tf_g = time.time()
-    dt_g = tf_g - t0_g
-
     # t0_r = time.time()
     # REO_optimized, REO_iters = REO_opt(edges, nodes, '0_000', 25, 1e-8)
     # tf_r = time.time()
     # dt_r = tf_r - t0_r
+    #
+    # nodes2 = []
+    # for i in range(len(REO_optimized[0])):
+    #     id = '0_' + str(i).zfill(3)
+    #     temp = [id, REO_optimized[0][i], REO_optimized[1][i], REO_optimized[2][i]]
+    #     nodes2.append(temp)
+
+    t0_g = time.time()
+    GPO_optimized, GPO_iters = gpo.opt(edges, nodes, '0_000', 25, 1e-8)
+    # GPO_optimized, GPO_iters = gpo.opt(edges, nodes2, '0_000', 25, 1e-8)
+    tf_g = time.time()
+    dt_g = tf_g - t0_g
+
+    nodes2 = []
+    for i in range(len(GPO_optimized[0])):
+        id = '0_' + str(i).zfill(3)
+        temp = [id, GPO_optimized[0][i], GPO_optimized[1][i], GPO_optimized[2][i]]
+        nodes2.append(temp)
+
+    edges2 = np.zeros((3, len(GPO_optimized[0])-1))  # How do I deal with the loopclosures in here??
+    edges2[0, :] = np.ediff1d(GPO_optimized[0, :])
+    edges2[1, :] = np.ediff1d(GPO_optimized[1, :])
+    edges2[2, :] = np.ediff1d(GPO_optimized[2, :])
+
+    t0_r = time.time()
+    # REO_optimized, REO_iters = REO_opt(edges, nodes, '0_000', 25, 1e-8)
+    REO_optimized, REO_iters = REO_opt(edges, edges2, '0_000', 25, 1e-8)  # what do I replace edges with? I can't do edges2 because cost function will be 0
+    tf_r = time.time()
+    dt_r = tf_r - t0_r
 
     results_dict['GPO_opt'] = GPO_optimized
     results_dict['REO_opt'] = REO_optimized
@@ -76,6 +88,7 @@ if __name__ == '__main__':
 
     f = open('data1.txt', 'r')
     data = json.load(f)
+    f.close()
     edges = data['edges']
     nodes = data['nodes']
     lc = data['loop_closures']
@@ -93,23 +106,36 @@ if __name__ == '__main__':
     print('REO Iters: ', results['REO_iters'])
 
     plt.figure(1)
-    plt.plot(-reo_f[0, :], reo_f[1, :], label='REO', color='b')
+    plt.plot(reo_f[0, :], reo_f[1, :], label='REO', color='b')
+    plt.title("REO")
     for i, loop in enumerate(lc):
         plt.plot(reo_f[0, loop], reo_f[1, loop], 'r')  # plot the loop closures.
     plt.axis([-20, 20, -3, 38])
     plt.legend(['REO Path', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False,
                shadow=False, ncol=2, prop={'size' : 14})
 
-    plt.savefig("plots_hw/reo_hw.eps", bbox_inches='tight', format='eps', pad_inches=0)
+    plt.savefig("plots_hw/reo_hw2.eps", bbox_inches='tight', format='eps', pad_inches=0)
 
     plt.figure(2)
-    plt.plot(-gpo_f[0, :], gpo_f[1, :], label='GPO', color='b')
+    plt.plot(gpo_f[0, :], gpo_f[1, :], label='GPO', color='b')
+    plt.title("GPO")
     for i, loop in enumerate(lc):
         plt.plot(gpo_f[0, loop], gpo_f[1, loop], 'r')  # plot the loop closures.
     plt.axis([-20, 20, -3, 38])
     plt.legend(['GPO Path', 'Loop closures'], loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=2, prop={'size' : 14})
     plt.savefig("plots_hw/gpo_hw.eps", bbox_inches='tight', format='eps', pad_inches=0)
     plt.show()
+
+    os.chdir("../..")
+
+    data2 = dict()
+    data2['REO_opt'] = reo_f.tolist()
+    data2['GPO_opt'] = gpo_f.tolist()
+
+    filename = "optimization_data.txt"
+    d = open(filename, 'w')
+    json.dump(data2, d)
+    d.close()
 
 
     # reo_f['avg_REO_error'] = sum(reo_f['REO_errors']) / float(reo_f['num_robots'])

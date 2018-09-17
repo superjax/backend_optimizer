@@ -69,9 +69,10 @@ def get_edges(plot):
             i += 1
 
     if plot:
-        plt.figure(1)
+        plt.figure(1, figsize=(6, 4))
         x2 = np.array(x2)
         plt.plot(x2[:, 1], x2[:, 2])
+        plt.title("Initial Data")
         for i, loop in enumerate(lc):
             plt.plot(x2[loop, 1], x2[loop, 2], 'r')  # plot the loop closures
         plt.axis([-20, 20, -3, 38])
@@ -81,12 +82,12 @@ def get_edges(plot):
         plt.savefig("tests/well_conditioned/plots_hw/data_hw.eps", bbox_inches='tight', format='eps', pad_inches=0)
         plt.show()
 
-    return x, edges, lc
+    return x, edges, lc, x2.tolist()
 
 
 if __name__ == "__main__":
     plot = True
-    poses, edges, lcs = get_edges(plot)
+    poses, edges, lcs, poses2 = get_edges(plot)
 
     truth = poses  # is this the right thing to do with the lack of perfect information
     global_state = poses  # assuming the local and global are the same frame: Not entirely needed for this
@@ -97,6 +98,7 @@ if __name__ == "__main__":
     data['truth'] = truth
     data['global_state'] = global_state
     data['loop_closures'] = lcs
+    data['poses'] = poses2
     filename = "data1.txt"
     f = open(filename, 'w')
     json.dump(data, f)
