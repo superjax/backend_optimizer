@@ -11,6 +11,11 @@ from GPO import GPO
 import os, subprocess
 # from combined import combined_opt
 import shutil
+import matplotlib.transforms as mtransforms
+
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
 def norm(v, axis=None):
     return np.sqrt(np.sum(v*v, axis=axis))
@@ -200,33 +205,37 @@ if __name__ == '__main__':
 
     # Plot Error Histogram
     hist_options = {"edgecolor":'black', "linewidth":0.5}
-    plt.figure(1, figsize=(12,8))
-    plt.set_cmap('Set2')
-    plt.subplot(2,2,1)
-    plt.hist(results['REO_errors'], label="REO", **hist_options)
-    plt.legend()
-    plt.subplot(2,2,3)
-    plt.hist(results['GPO_errors'], label="GPO", **hist_options)
-    plt.legend()
-    plt.subplot(1,2,2)
-    plt.hist(results['diff_errors'], label="REO-GPO", **hist_options)
-    plt.legend()
-    plt.savefig("plots/error_hist" + str(results['num_robots']) + ".png", bbox_inches='tight', pad_inches=0)
-
-    # Plot Iterations Histogram
-    plt.figure(1, figsize=(12,8))
+    plt.figure(1, figsize=(2,4))
     plt.set_cmap('Set2')
     plt.subplot(2,1,1)
-    plt.hist(results['REO_iters'], label="REO", **hist_options)
+    plt.hist(results['REO_errors'], label="REO", **hist_options)
+    plt.xlabel("RMSE")
     plt.legend()
     plt.subplot(2,1,2)
-    plt.hist(results['GPO_iters'], label="GPO", **hist_options)
+    plt.hist(results['GPO_errors'], label="GPO", **hist_options)
+    plt.xlabel("RMSE")
     plt.legend()
-    plt.savefig("plots/iter_hist" + str(results['num_robots']) + ".png", bbox_inches='tight', pad_inches=0)
+    # plt.subplot(1,2,2)
+    # plt.hist(results['diff_errors'], label="REO-GPO", **hist_options)
+    # plt.xlabel("RMSE")
+    # plt.legend()
+    plt.savefig("plots/well_conditioned_hist" + str(results['num_robots']) + ".pdf", bbox_inches='tight', pad_inches=0)
+
+    # # Plot Iterations Histogram
+    # plt.figure(1, figsize=(6,4))
+    # plt.set_cmap('Set2')
+    # plt.subplot(2,1,1)
+    # plt.hist(results['REO_iters'], label="REO", **hist_options)
+    # plt.legend()
+    # plt.subplot(2,1,2)
+    # plt.hist(results['GPO_iters'], label="GPO", **hist_options)
+    # plt.legend()
+    # plt.savefig("plots/iter_hist" + str(results['num_robots']) + ".pdf", bbox_inches='tight', pad_inches=0)
 
     # Plot all the trajectories
     print( "plotting trajectories")
-    plt.figure(2, figsize=(12,9))
+    plt.figure(2, figsize=(4,4))
+    # bb = mtransforms.Bbox([[0.4, 0.2], [5.5, 3.6]])
     plt.set_cmap('Set1')
     for j, (REO, GPO, nodes, truth) in tqdm(enumerate(zip(results['REO_opt'], results['GPO_opt'], results['nodes'], results['truth'])), total=results['num_robots']):
         initial_pos = np.array([[nodes[i][1], nodes[i][2]] for i in range(len(nodes))])
@@ -237,10 +246,12 @@ if __name__ == '__main__':
         plt.plot(truth[0,:], truth[1,:], label="truth", linewidth=1, alpha=1, color='k')
         plt.plot(REO[0,:], REO[1,:], label='REO', linewidth=3,  alpha=0.8, dashes=[4,2], color='b')
         plt.plot(GPO[0, :], GPO[1, :], label='GPO', linewidth=3, alpha=0.8, dashes=[2, 4], color='r')
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=False, shadow=False, ncol=4)
-        plt.savefig("plots/traj" + str(j).zfill(3) + ".svg", bbox_inches='tight', pad_inches=0)
+        # box = ax.get_position()
+        # ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
+        # ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.07), fancybox=False, shadow=False, ncol=4)
+        ax.legend()
+        ax.axis('square')
+        plt.savefig("plots/well_conditioned_traj" + str(j).zfill(3) + ".pdf", bbox_inches="tight", pad_inches=0)
         if j > 100:
             break
 
