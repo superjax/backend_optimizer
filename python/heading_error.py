@@ -224,7 +224,7 @@ if __name__ == '__main__':
     plt.subplot(2,1,2)
     plt.hist(results['GPO_errors'], label="GPO", **hist_options)
     plt.legend()
-    plt.xlabel("RMSE")
+    plt.xlabel("Root Mean Squared Error")
     plt.savefig("plots/heading_error_hist" + str(results['num_robots']) + ".pdf", bbox_inches='tight', pad_inches=0)
 
     # Plot Iterations Histogram

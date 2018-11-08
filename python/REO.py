@@ -222,7 +222,7 @@ class REO():
         e = z_hat - z_bar
 
         val = e.T.dot(Omega).dot(e)
-        print(val)
+        # print(val)
 
         return val
 
