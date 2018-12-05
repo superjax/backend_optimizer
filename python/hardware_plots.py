@@ -90,7 +90,7 @@ if __name__ == '__main__':
     data = json.load(f)
     f.close()
     edges = data['edges']
-    nodes = data['nodes']
+    nodes = data['nodes'] #IC for the guess. Used to measure the cost function
     lc = data['loop_closures']
 
     cwd = os.getcwd()

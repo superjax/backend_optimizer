@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     # gs1 = gridspec.GridSpec(3, 1)
     # gs1.update(wspace = 0.005, hspace=0.005)
-    fig, ((ax1, ax2, ax3)) = plt.subplots(1, 3, sharey=True, figsize=(6, 4))
+    fig, ((ax1, ax2, ax3)) = plt.subplots(1, 3, sharey=True, figsize=(6, 5))
 
     # ax1.plot(init_nodes[:, 1], init_nodes[:, 2], 'b')
     ax1.plot(init_nodes[:, 1], init_nodes[:, 2], 'b')
@@ -54,7 +54,8 @@ if __name__ == "__main__":
 
     plt.subplots_adjust(wspace = 0, hspace=0)
 
-    plt.savefig("tests/well_conditioned/plots_hw/combined_single.eps", bbox_inches='tight', format='eps', pad_inches=0)
+    # plt.savefig("tests/well_conditioned/plots_hw/combined_single.eps", bbox_inches='tight', format='eps', pad_inches=0)
+    plt.savefig("tests/well_conditioned/plots_hw/combined_single.eps", bbox_inches='tight', format='eps', pad_inches=0.1)
 
 
     plt.show()
@@ -127,6 +128,6 @@ if __name__ == "__main__":
 
     plt.subplots_adjust(wspace=0, hspace=0)
 
-    plt.savefig("tests/well_conditioned/plots_hw/combined_multi.eps", bbox_inches='tight', format='eps', pad_inches=0)
+    plt.savefig("tests/well_conditioned/plots_hw/combined_multi.eps", bbox_inches='tight', format='eps', pad_inches=0.1)
 
     plt.show()

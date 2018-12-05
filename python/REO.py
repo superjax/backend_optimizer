@@ -187,12 +187,11 @@ class REO():
                     m[3*i+1, 3 * i + 1] = 1.0 / edge_counter[edge]
                     m[3*i+2, 3 * i + 2] = 1.0 / edge_counter[edge]
 
-
                 tempA = m.dot(H_az.T.dot(this_lc_omega).dot(H_az))
                 A += mask.dot(tempA).dot(mask.T)
                 b -= mask.dot(m.dot(H_az.T.dot(this_lc_omega).dot(residual))).flatten()
 
-
+            # val = self.get_cost_function_value(z_hat, z_bar, O_inv)
             val = self.get_cost_function_value(z_hat, z_bar, O_inv)
 
             if val < .00315 and iter !=0:
@@ -222,10 +221,9 @@ class REO():
         e = z_hat - z_bar
 
         val = e.T.dot(Omega).dot(e)
-        # print(val)
+        print(val)
 
         return val
-
 
     def compound_edges(self, z, dirs):
         p = np.zeros(3)
