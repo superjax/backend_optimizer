@@ -248,7 +248,7 @@ if __name__ == '__main__':
         ax.legend()
         ax.axis('square')
         plt.savefig("plots/well_conditioned_traj" + str(j).zfill(3) + ".pdf", bbox_inches="tight", pad_inches=0)
-        plt.savefig("plots/well_conditioned_traj" + str(j).zfill(3) + ".svg", bbox_inches="tight", pad_inches=0)
+        plt.savefig("plots/well_conditioned_traj" + str(j).zfill(3) + ".png", bbox_inches="tight", pad_inches=0)
         if j > 100:
             break
     # print( "plotting trajectories")
