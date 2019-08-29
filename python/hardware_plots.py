@@ -2,11 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from REO import invert_transform, concatenate_transform, invert_edges, get_global_pose, REO_opt
-from GPO import GPO
+print("Here")
+#from GPO import GPO
+print("here")
 import os, subprocess
 import json
 import time
-
 
 def norm(v, axis=None):
     return np.sqrt(np.sum(v*v, axis=axis))
@@ -34,7 +35,7 @@ def run(data):
     results_dict['GPO_opt'] = []
     results_dict['truth'] = []
 
-    gpo = GPO()
+    #gpo = GPO()
 
     # Optimize with both optimizers
     results_dict['edges'].append(edges)
@@ -52,34 +53,34 @@ def run(data):
     #     nodes2.append(temp)
 
     t0_g = time.time()
-    GPO_optimized, GPO_iters = gpo.opt(edges, nodes, '0_000', 25, 1e-8)
+    #GPO_optimized, GPO_iters = gpo.opt(edges, nodes, '0_000', 25, 1e-8)
     # GPO_optimized, GPO_iters = gpo.opt(edges, nodes2, '0_000', 25, 1e-8)
     tf_g = time.time()
     dt_g = tf_g - t0_g
 
     nodes2 = []
-    for i in range(len(GPO_optimized[0])):
-        id = '0_' + str(i).zfill(3)
-        temp = [id, GPO_optimized[0][i], GPO_optimized[1][i], GPO_optimized[2][i]]
-        nodes2.append(temp)
+   # for i in range(len(GPO_optimized[0])):
+   #     id = '0_' + str(i).zfill(3)
+   #     temp = [id, GPO_optimized[0][i], GPO_optimized[1][i], GPO_optimized[2][i]]
+   #     nodes2.append(temp)
 
-    edges2 = np.zeros((3, len(GPO_optimized[0])-1))  # How do I deal with the loopclosures in here??
-    edges2[0, :] = np.ediff1d(GPO_optimized[0, :])
-    edges2[1, :] = np.ediff1d(GPO_optimized[1, :])
-    edges2[2, :] = np.ediff1d(GPO_optimized[2, :])
+#    edges2 = np.zeros((3, len(GPO_optimized[0])-1))  # How do I deal with the loopclosures in here??
+#    edges2[0, :] = np.ediff1d(GPO_optimized[0, :])
+#    edges2[1, :] = np.ediff1d(GPO_optimized[1, :])
+#    edges2[2, :] = np.ediff1d(GPO_optimized[2, :])
 
     t0_r = time.time()
-    # REO_optimized, REO_iters = REO_opt(edges, nodes, '0_000', 25, 1e-8)
-    REO_optimized, REO_iters = REO_opt(edges, edges2, '0_000', 25, 1e-8)  # what do I replace edges with? I can't do edges2 because cost function will be 0
+    REO_optimized, REO_iters = REO_opt(edges, nodes, '0_000', 25, 1e-8)
+    #REO_optimized, REO_iters = REO_opt(edges, edges2, '0_000', 25, 1e-8)  # what do I replace edges with? I can't do edges2 because cost function will be 0
     tf_r = time.time()
     dt_r = tf_r - t0_r
 
-    results_dict['GPO_opt'] = GPO_optimized
+    #results_dict['GPO_opt'] = GPO_optimized
     results_dict['REO_opt'] = REO_optimized
     results_dict['GPO_Time'] = dt_g
     results_dict['REO_Time'] = dt_r
     results_dict['REO_iters'] = REO_iters
-    results_dict['GPO_iters'] = GPO_iters
+    #results_dict['GPO_iters'] = GPO_iters
 
     return results_dict
 
